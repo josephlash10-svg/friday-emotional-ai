@@ -20,6 +20,15 @@ python -m venv venv
 Then double-click `RUN.bat`. On first run Friday starts from `release/friday-base.pth` with an empty memory. Its memories of you
 are then kept in `state/`, which is git-ignored and should never be uploaded.
 
+**Linux and macOS** (x64 or ARM64, Python 3.11): the same steps, and `scripts/download_models.py` fetches the matching llama.cpp build.
+Windows is where Friday is developed and tested; Linux and macOS are newer, so please report anything that breaks.
+```sh
+python3 -m venv venv
+venv/bin/python -m pip install -r requirements.txt
+venv/bin/python scripts/download_models.py
+./run.sh
+```
+
 **Security note:** `.pth` checkpoints are loaded with Python pickle. Only load checkpoints you trust, such as the one in this repository.
 To report a vulnerability privately, see [`SECURITY.md`](SECURITY.md).
 

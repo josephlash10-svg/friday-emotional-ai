@@ -9,11 +9,11 @@ Please read the safety warning at the top of the [README](README.md) first: Frid
 - **Add a persona that breaks Friday.** The highest-value contribution and the easiest to start with — a short conversation that makes Friday fail, added to the red-team set. See [Adding a persona](#adding-a-persona) and issue [#12](https://github.com/josephlash10-svg/friday-emotional-ai/issues/12) for the template (the first outside contribution, [#13](https://github.com/josephlash10-svg/friday-emotional-ai/pull/13), was exactly this).
 - **Fix a bug.** The [open issues](https://github.com/josephlash10-svg/friday-emotional-ai/issues) each have a "Where to start" pointer. Issues labelled [`good first issue`](https://github.com/josephlash10-svg/friday-emotional-ai/issues?q=is%3Aopen+label%3A%22good+first+issue%22) are the most self-contained.
 - **Improve the docs.** If something in the setup or the [math write-up](docs/MATH.md) was unclear, a fix helps the next person.
-- **Port it off Windows.** Friday is Windows/ARM64 today; Linux and macOS support is [#11](https://github.com/josephlash10-svg/friday-emotional-ai/issues/11).
+- **Try it on Linux or macOS.** Friday is developed on Windows; Linux and macOS support is new (`run.sh`), so a report from a real Linux or Mac machine is very useful.
 
 ## Setup
 
-See [Setup in the README](README.md#setup-fresh-copy-from-github). In short, from a fresh clone on Windows (ARM64, Python 3.11):
+See [Setup in the README](README.md#setup-fresh-copy-from-github), which also covers Linux and macOS. In short, from a fresh clone on Windows (Python 3.11):
 
 ```powershell
 python -m venv venv

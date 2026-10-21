@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import socket
 import subprocess
+import sys
 import time
 import re
 import secrets
@@ -31,8 +32,21 @@ def native_arch():
         except (AttributeError,OSError,ctypes.ArgumentError):pass
     return 'arm64' if platform.machine().upper() in ('ARM64','AARCH64') else 'x64'
 
-# scripts/download_models.py installs the matching llama.cpp build (ARM64 or x64 Windows).
-DEFAULT_RUNTIME=ROOT/'runtime'/f'llama-{native_arch()}'/'llama-server.exe'
+def runtime_path(arch=None,windows=None):
+    """Where scripts/download_models.py installs llama-server for this machine (Windows, Linux or macOS)."""
+    windows=os.name=='nt' if windows is None else windows
+    return ROOT/'runtime'/f'llama-{arch or native_arch()}'/('llama-server.exe' if windows else 'llama-server')
+
+def die_with_parent():
+    """Linux: ask the kernel to stop the language server when Friday's process dies, the job the Windows job
+    object does there. Runs in the child just before llama-server starts. (macOS has no equivalent; the server
+    stays in Friday's process group, so closing the terminal stops both, and atexit covers a normal exit.)"""
+    import ctypes.util
+    libc=ctypes.CDLL(ctypes.util.find_library('c') or 'libc.so.6',use_errno=True)
+    libc.prctl(1,15)  # PR_SET_PDEATHSIG, SIGTERM
+
+# scripts/download_models.py installs the matching llama.cpp build (issue #11 added Linux and macOS).
+DEFAULT_RUNTIME=runtime_path()
 
 # Plain words for the 19 emotion channels, used in the writer's private notes.
 MOOD_WORDS={'anger':'irritation','sadness':'sadness','fear':'worry','joy':'happiness','shame':'embarrassment','guilt':'guilt',
@@ -175,7 +189,7 @@ class NativeLanguage:
         self.process=None;self.log=None;self.last_metrics={}
         self.emotion_names=tuple(emotion_names)
         if not self.model.is_file() or not self.runtime.is_file():
-            raise RuntimeError('Native runtime/model files are missing. See docs/cpu-performance.md.')
+            raise RuntimeError('The language model or llama-server is missing. Run: python scripts/download_models.py (see Setup in README.md).')
         if threads<1 or context<512: raise ValueError('Invalid native runtime settings')
         with socket.socket() as probe:
             probe.bind(('127.0.0.1',0));port=probe.getsockname()[1]
@@ -192,7 +206,8 @@ class NativeLanguage:
         # through the environment, not the command line, so it doesn't show up in process lists.
         self.api_key=secrets.token_urlsafe(32)
         self.process=subprocess.Popen(command,stdout=self.log,stderr=self.log,creationflags=flags,
-                                      env=dict(os.environ,LLAMA_API_KEY=self.api_key))
+                                      env=dict(os.environ,LLAMA_API_KEY=self.api_key),
+                                      preexec_fn=die_with_parent if sys.platform.startswith('linux') else None)
         self._job=bind_child_to_this_process(self.process.pid)  # server dies with this window, even when it's closed with X
         atexit.register(self.close)
         deadline=time.perf_counter()+180  # a 4B model on a busy 16 GB laptop can take over a minute
