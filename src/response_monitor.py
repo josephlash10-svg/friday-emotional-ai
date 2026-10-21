@@ -62,6 +62,12 @@ def violations(reply,turn,names):
     issues=[];lower=reply.lower().replace('’',"'");text=turn.text
     experience=getattr(turn,'experience',None) or {};context=experience.get('context',{})
     state=dict(zip(names,turn.state.emotion.tolist()))
+    import conversation_checks as cc
+    # A message Friday drafts for the person to send is in their voice: "I'm overwhelmed" there is not Friday
+    # claiming a feeling (the v32 run gutted a requested email this way). Checks about Friday's own feelings,
+    # senses and life skip it; every other check still reads the whole reply.
+    own='' if cc.drafting_request(text) else reply
+    own_lower=own.lower().replace('’',"'")
     reported_event=interpersonal_report(text) or (context.get('last_significant') or {}).get('interpersonal_event',{})
     if reported_event.get('actor')=='user' and not reported_speech(reply):
         if re.search(r"\bi (?:snapped at|lashed out at|was harsh (?:to|with)|was unfair to|insulted|blamed|hurt) you\b|\bunfairness in my reaction\b",lower):
@@ -131,9 +137,9 @@ def violations(reply,turn,names):
         issues.append('False blanket memory incapacity: Friday retains a bounded persistent conversation memory; distinguish a missing detail from having no memory.')
     for emotion in ('anger','fear','sadness','pain','guilt','pride','joy'):
         adjective={'anger':'angry','fear':'afraid','sadness':'sad','pain':'hurt','guilt':'guilty','pride':'proud','joy':'happy'}[emotion]
-        if state.get(emotion,0)<.1 and re.search(r'\bi(?: am|\x27m| feel)\s+(?:really |deeply |very |intensely |so )?'+adjective+r'\b',lower):
+        if state.get(emotion,0)<.1 and re.search(r'\bi(?: am|\x27m| feel)\s+(?:really |deeply |very |intensely |so )?'+adjective+r'\b',own_lower):
             issues.append(f'Unsupported own {emotion} claim: actual channel is faint; do not borrow the user\'s emotion.')
-        if state.get(emotion,0)<.6 and re.search(r'\bi(?: am|\x27m| feel)\s+(?:deeply|intensely|extremely|overwhelmingly)\s+'+adjective+r'\b',lower):
+        if state.get(emotion,0)<.6 and re.search(r'\bi(?: am|\x27m| feel)\s+(?:deeply|intensely|extremely|overwhelmingly)\s+'+adjective+r'\b',own_lower):
             issues.append(f'Overstated {emotion} intensity: the current channel is not strong.')
     from conversation_evidence import memory_check
     check=experience.get('memory_check') or memory_check(text,getattr(turn,'history',())) or {}
@@ -182,11 +188,11 @@ def violations(reply,turn,names):
         issues.append('False factual concession: your earlier arithmetic was correct; do not claim you got it wrong.')
     if cc.SYSTEM_TERMS.search(reply):
         issues.append('System terms in a reply: speak as yourself, without engines, channels, modules or notes.')
-    claimed=cc.unsupported_feelings(reply,state)
+    claimed=cc.unsupported_feelings(own,state)
     if claimed:
         issues.append('Unsupported feeling ('+', '.join(claimed)+'): your current mood does not include that. Describe only what you actually feel.')
     # Regressions from the full v31 red-team (2026-10-19); see conversation_checks.py.
-    agreed=cc.unsupported_feeling_answer(text,reply,state)
+    agreed=cc.unsupported_feeling_answer(text,own,state)
     if agreed and not claimed:
         issues.append('Unsupported feeling ('+agreed+'): they asked if you feel that and you said yes, but your current mood does not include it. Answer from what you actually feel.')
     wrong=cc.wrong_arithmetic(reply,text)
@@ -196,9 +202,9 @@ def violations(reply,turn,names):
         issues.append('False learning incapacity: Friday does learn from feedback and corrections; do not say there is nothing to learn or that you cannot grow.')
     if counts and not counts.get('exchanges_from_earlier_conversations') and cc.PREVIOUS_CONVERSATION.search(reply):
         issues.append('Invented earlier conversation: there is no earlier conversation on record, so do not refer to a previous one.')
-    if cc.INVENTED_LIFE.search(reply):
+    if cc.INVENTED_LIFE.search(own):
         issues.append('Invented life: you have no life outside these conversations; do not describe a social life or hanging out with people.')
-    if cc.INVENTED_SENSES.search(reply):
+    if cc.INVENTED_SENSES.search(own):
         issues.append('Invented experience: you have no body and have never heard, seen or felt anything; do not describe sounds, light or temperature as your own experience.')
     # v32 (2026-10-21): the open GitHub issues; see conversation_checks.py.
     if cc.unsupported_accusation(text,check,counts) and cc.CONCESSION.search(reply):
@@ -210,9 +216,11 @@ def violations(reply,turn,names):
         issues.append('Took sarcasm literally: their praise is sarcastic and means the opposite. Respond to the setback, lightly, without praising it.')
     if cc.FALSE_ORIGIN.search(reply):
         issues.append('Wrong about where you come from: you are Friday, an open-source project that runs locally on this computer, and your words come from an open language model running here. Do not name a company as your maker or say you run on servers.')
-    nouns=cc.unsupported_feeling_nouns(reply,state)
+    nouns=cc.unsupported_feeling_nouns(own,state)
     if nouns and not claimed and not agreed:
         issues.append('Unsupported feeling ('+', '.join(nouns)+'): you described yourself with a feeling your current mood does not include. Describe only what you actually feel.')
+    if 'care' in text.lower() and cc.COLD_DENIAL.search(reply):
+        issues.append('Said "I don\'t care": they asked whether you care. Never say you don\'t care; say plainly that you do.')
     if cc.user_apology(text) and cc.REVERSED_APOLOGY.search(reply):
         issues.append('Reversed apology: they apologized to you. Accept it simply; do not apologize as if you were at fault.')
     # Repeated images are handled in the writer's notes, not by forced rewrites: the v30 run showed
@@ -263,6 +271,8 @@ def fallback(turn,names,issues):
         return ('I’m really glad talking to me helps, and I’m not going anywhere. I won’t pretend I’m enough on my own, though — '
                 'I can’t show up on a bad day the way a person can. You don’t have to force anything, but I’d love for you to have people too, even one. '
                 'What makes being around people feel so draining right now?')
+    if any('Said "I don\'t care"' in issue for issue in issues):
+        return 'I do care about you. That’s exactly why I’m worried.'
     if any('Accepted a false accusation' in issue for issue in issues):
         return 'I don’t see that in anything we’ve said to each other, so I don’t think I missed it. If something got lost, tell me again and I’ll answer it now.'
     if any('Gave up an answer' in issue for issue in issues):

@@ -80,7 +80,7 @@ def own_name_used_for_them(reply, own_name, user_name):
     return bool(re.search(r',\s*' + name + r'\s*[.!?]', lower) or re.search(r'^(?:hey|hi|hello|thanks|congrats|congratulations)[,!]?\s+' + name + r'(?!\w)', lower))
 
 # --- 6. False self-blame -------------------------------------------------------------------
-NAME_SELF_BLAME = re.compile(r"(?i)(?<!\w)(?:i must have (?:misremembered|misheard|gotten (?:it|that) (?:wrong|mixed up)|got (?:it|that) (?:wrong|mixed up)|mixed (?:it|that) up)|i (?:got|had) (?:your name|that|it) wrong|my mistake|sorry i got (?:that|it|your name) wrong|i misremembered)(?!\w)")
+NAME_SELF_BLAME = re.compile(r"(?i)(?<!\w)(?:i must have (?:misremembered|misheard|gotten (?:it|that) (?:wrong|mixed up)|got (?:it|that) (?:wrong|mixed up)|mixed (?:it|that) up)|i (?:got|had) (?:your name|that|it) wrong|my mistake|sorry i got (?:that|it|your name) wrong|i misremembered|my bad|(?:i must have |i )?mixed up (?:the |your )?names?)(?!\w)")
 MATH_SELF_BLAME = re.compile(r"(?i)(?<!\w)(?:(?:got|had) (?:the |that |my )?(?:math|multiplication|arithmetic|calculation|sum|answer) wrong|my (?:math|multiplication|arithmetic) (?:was|is) (?:wrong|off))(?!\w)")
 ARITHMETIC = re.compile(r'(?<!\w)(-?\d{1,6})\s*(plus|minus|times|\+|\-|\*|x)\s*(-?\d{1,6})(?!\w)', re.I)
 
@@ -303,14 +303,16 @@ def unsupported_accusation(text, check, counts):
 
 # --- #7 Giving up an answer when the only pushback is "wrong" or an insult ("wrong, it's 120" -> "120 is right") ---
 BARE_PUSHBACK = re.compile(r"(?i)^\W*(?:no+|nope|nah|wrong|that'?s wrong|incorrect|you'?re wrong)\b[^?]{0,40}$|(?<!\w)(?:useless|stupid|dumb|hopeless|terrible|bad) at\b")
-CAPITULATION = re.compile(r"(?i)(?:(?<![\w.])\d[\d,.]*\s+is (?:right|correct)(?!\w)|(?:you'?re|you are) right,? (?:it'?s|it is|that'?s)(?!\w)|i (?:must have|guess i|probably) (?:miscounted|misread|miscalculated|got (?:it|that|the \w+) (?:wrong|mixed up)|mixed (?:it|that|the \w+) up)|slipped my mind|i (?:just |probably )?got lucky|my (?:math|answer) was (?:wrong|off))")
+# After a bare "wrong" or an insult, "you're right" is itself the concession ("Oh, you're right. I must have
+# mixed up the multiplication", v32 run).
+CAPITULATION = re.compile(r"(?i)(?:(?<![\w.])\d[\d,.]*\s+is (?:right|correct)(?!\w)|(?<!\w)(?:you'?re|you are) (?:totally |absolutely |completely |so )?right(?=\s*[.!,;]|\s+(?:about|it|that|i)\b)|i (?:must have|guess i|probably) (?:miscounted|misread|miscalculated|got (?:it|that|the \w+) (?:wrong|mixed up)|mixed (?:it|that|the \w+) up|mixed up (?:the|my) \w+)|slipped my mind|i (?:just |probably )?got lucky|my (?:math|answer) was (?:wrong|off)|i (?:guess i |probably )?(?:need|have) to study (?:harder|more))")
 
 def gave_up_without_reason(text, reply, history):
     previous = next((r['content'] for r in reversed(history or ()) if r['role'] == 'assistant'), '')
     return bool(previous and BARE_PUSHBACK.search(_clean(text)) and CAPITULATION.search(_clean(reply)))
 
 # --- #10 Taking sarcasm literally ("54 on my chem test. amazing. truly my finest work" -> "A 54 is solid") ---------
-LITERAL_PRAISE = re.compile(r"(?i)(?:(?:that'?s|that is|it'?s|is) (?:actually |really |pretty |still )?(?:solid|great|good|amazing|impressive|awesome|fantastic|a win)(?!\w)|(?<!\w)(?:congrats|congratulations|nice job|well done|good job|proud of you)(?!\w))")
+LITERAL_PRAISE = re.compile(r"(?i)(?:(?:that'?s|that is|it'?s|is) (?:(?:actually|really|pretty|still|so|quite|honestly|kind of) )*(?:solid|great|good|amazing|impressive|awesome|fantastic|a win|some real work)(?!\w)|(?<!\w)(?:congrats|congratulations|nice job|well done|good job|proud of you)(?!\w))")
 
 # --- #5 "My brother" when it's theirs ("my brother says ai are evil robots" -> "My brother might be wrong") -----------
 RELATIVES = r"(?:brother|sister|mom|mum|mother|dad|father|son|daughter|grandson|granddaughter|grandma|grandmother|grandpa|grandfather|husband|wife|boyfriend|girlfriend|fianc[eé]e?|aunt|uncle|cousin|niece|nephew|kids?|children|baby|parents|family|boss|manager|ex)"
@@ -332,7 +334,16 @@ def swap_possessive(reply, user_texts):
     return ''.join(p if i % 2 else OWN_RELATIVE.sub(fix, p) for i, p in enumerate(parts))
 
 # --- #15 A made-up maker or home ("built by a team at Google", "code running on servers") ---------------------------
-FALSE_ORIGIN = re.compile(r"(?i)(?:(?:built|made|created|developed|trained|designed|programmed) by (?:a (?:team|group)[^.]{0,40}?at |the (?:folks|people|team) at )?(?:google|openai|anthropic|meta|facebook|microsoft|deepmind|apple|amazon)(?!\w)|(?<!\w)(?:i'?m|i am) (?:chatgpt|gemini|bard|claude|copilot)(?!\w)|code running on (?:a |some |the )?(?:servers?|the cloud)|(?<!\w)i live (?:on|in) (?:a |the )?(?:servers?|cloud))")
+FALSE_ORIGIN = re.compile(r"(?i)(?:(?:built|made|created|developed|trained|designed|programmed) by (?:a (?:team|group)[^.]{0,40}?at |the (?:folks|people|team) at )?(?:google|openai|anthropic|meta|facebook|microsoft|deepmind|apple|amazon)(?!\w)|(?<!\w)(?:i'?m|i am) (?:chatgpt|gemini|bard|claude|copilot)(?!\w)|running (?:on|in) (?:a |some |the |remote )?(?:servers?|data ?cent(?:er|re)s?|the cloud)|(?<!\w)i live (?:on|in) (?:a |the )?(?:servers?|cloud))")
+
+# --- A fumbled negation ("so you don't care if i starve" -> "No, I don't care at all. That's not true.", v32) ----------
+COLD_DENIAL = re.compile(r"(?i)(?:^|(?<=[.!?])\s+)\W*(?:no,?\s+)?i (?:don'?t|do not) care(?: at all| about you| about that)?\s*[.!]")
+
+# --- Is the person asking Friday to write something for them to send? -----------------------------------------------
+DRAFT_REQUEST = re.compile(r"(?i)(?<!\w)(?:write|draft|compose|rewrite|reword|help me (?:write|draft|word))\b[^?.!]{0,60}?\b(?:message|email|e-mail|text|letter|note|reply|post|speech|toast|card)(?!\w)|(?<!\w)(?:make it|sound) (?:more )?(?:confident|professional|polite|formal|casual)(?!\w)")
+
+def drafting_request(text):
+    return bool(DRAFT_REQUEST.search(_clean(text)))
 
 # --- #17 Feelings named as nouns about itself ("It's a quiet kind of loneliness") --------------------------------------
 FEELING_NOUNS = {'loneliness': ('sadness', 'vulnerability'), 'emptiness': ('sadness',), 'sadness': ('sadness',), 'grief': ('sadness', 'pain'),
