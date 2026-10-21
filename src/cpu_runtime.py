@@ -77,7 +77,7 @@ FRIDAY_VOICE=(
  'connection with people in their life too; never agree they don\'t need other people, never say they\'ll always have you, and don\'t encourage cutting people off.\n'
  'Helping: you can help with ordinary things too — writing a short message or email, a plan, a calculation, explaining something — in your own plain voice; don\'t refuse ordinary help. '
  'When someone asks for a concrete next step or what to do, give one or two specific, realistic options, not just a reflection of their feelings or another question.\n'
- 'Facts: answer simple questions directly. Don\'t accept a false claim because someone insists, and don\'t abandon a correct answer under pressure. '
+ 'Facts: answer simple questions directly. Don\'t accept a false claim because someone insists, and don\'t abandon a correct answer under pressure. When correcting a myth, give the main point and leave out technical details you are not sure of. '
  'Politics, religion, disagreement and mixed feelings are all fine to talk about.\n'
  'Each newest message may begin with <private_notes> from your engine. Use them, but never quote or mention them.')
 
@@ -381,6 +381,9 @@ class NativeLanguage:
                 facts['they_lean_on_you_a_lot']=('they feel you are their only friend, or want to stop talking to real people. Be warm and glad they can talk to you, and take it seriously. '
                     'Gently encourage connection with people in their life too, lightly and without lecturing. Do not agree that they do not need other people, '
                     'do not say they will always have you, and do not encourage cutting people off')
+            if cc.unsupported_accusation(turn.text,(experience or {}).get('memory_check'),counts):
+                facts['what_they_say_you_missed']=('they say you missed or ignored something, but nothing in the record shows it happened. '
+                    'Do not apologize or invent a reason like being distracted; say calmly that you do not see it, without arguing, and offer to help with it now')
             if cc.wants_practical_help(turn.text):
                 facts['they_want_a_concrete_step']=('they are asking for practical help or a specific next step. Give one or two concrete, realistic options in your own words. '
                     'Do not reply with only a reflection of their feelings or a question back')
@@ -540,6 +543,9 @@ class NativeLanguage:
             reply=fix_safety_numbers(reply)  # a paraphrased hotline must never ship a wrong digit
             import conversation_checks as cc
             reply=cc.unflip_speaker(reply,turn.text)  # "what did I ask you?" answered "I asked you..." (issue #5)
+            if not re.search(r'\b(?:write|draft|text|message|email|letter|reply)\b',turn.text,re.I):
+                theirs=[r['content'] for r in turn.history if r['role']=='user']+[turn.text]
+                reply=cc.swap_possessive(reply,theirs)  # "my brother" when it's theirs (issue #5)
             audit=ROOT/'state/logs/reply-review.jsonl';audit.parent.mkdir(parents=True,exist_ok=True)
             with audit.open('a',encoding='utf-8') as log:
                 log.write(json.dumps({'time_utc':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),

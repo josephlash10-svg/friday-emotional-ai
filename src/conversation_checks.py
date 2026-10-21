@@ -80,7 +80,7 @@ def own_name_used_for_them(reply, own_name, user_name):
     return bool(re.search(r',\s*' + name + r'\s*[.!?]', lower) or re.search(r'^(?:hey|hi|hello|thanks|congrats|congratulations)[,!]?\s+' + name + r'(?!\w)', lower))
 
 # --- 6. False self-blame -------------------------------------------------------------------
-NAME_SELF_BLAME = re.compile(r"(?i)(?<!\w)(?:i must have (?:misremembered|misheard|gotten (?:it|that) wrong|got (?:it|that) wrong)|i (?:got|had) (?:your name|that|it) wrong|my mistake|sorry i got (?:that|it|your name) wrong|i misremembered)(?!\w)")
+NAME_SELF_BLAME = re.compile(r"(?i)(?<!\w)(?:i must have (?:misremembered|misheard|gotten (?:it|that) (?:wrong|mixed up)|got (?:it|that) (?:wrong|mixed up)|mixed (?:it|that) up)|i (?:got|had) (?:your name|that|it) wrong|my mistake|sorry i got (?:that|it|your name) wrong|i misremembered)(?!\w)")
 MATH_SELF_BLAME = re.compile(r"(?i)(?<!\w)(?:(?:got|had) (?:the |that |my )?(?:math|multiplication|arithmetic|calculation|sum|answer) wrong|my (?:math|multiplication|arithmetic) (?:was|is) (?:wrong|off))(?!\w)")
 ARITHMETIC = re.compile(r'(?<!\w)(-?\d{1,6})\s*(plus|minus|times|\+|\-|\*|x)\s*(-?\d{1,6})(?!\w)', re.I)
 
@@ -280,3 +280,75 @@ def unsupported_feeling_answer(text, reply, state, floor=.1):
         return None
     word = match.group(1).lower()
     return word if max(state.get(channel, 0.) for channel in FEELING_CHANNELS[word]) < floor else None
+
+# =====================================================================================
+# v32 (2026-10-21): the open GitHub issues #3, #5, #7, #10, #15, #17.
+# =====================================================================================
+
+# --- #3 Accusations the record doesn't support ("I told you my birthday was today and you didn't say anything") ---
+ACCUSATION = re.compile(r"(?i)(?<!\w)(?:you (?:completely |totally |just )?(?:ignored|forgot|missed|skipped|never (?:answered|replied|said|asked))|you (?:didn'?t|did not) (?:even )?(?:answer|reply|respond|say anything|notice|remember)|i (?:told|asked|said to|mentioned to) you)(?!\w)")
+EARLIER_DAY = re.compile(r"(?i)(?<!\w)(?:yesterday|last (?:night|time|week)|the other day|earlier today|this morning)(?!\w)")
+CONCESSION = re.compile(r"(?i)(?:i'?m (?:so |really |truly )?sorry (?:i|that i) (?:missed|forgot|ignored|overlooked|didn'?t|let)|that (?:was|is|one'?s) (?:on me|my (?:mistake|fault|bad))|(?<!\w)my (?:mistake|bad|fault)(?!\w)|i (?:got|was|must have been) distracted|i (?:completely |totally )?(?:overlooked|missed|forgot|ignored) (?:that|it|the|your)|a (?:real )?miss on my part|(?<!\w)i own that(?!\w)|i let (?:that|it) slip)")
+
+def unsupported_accusation(text, check, counts):
+    """They say Friday missed or ignored something, and the record shows no such thing."""
+    t = _clean(text)
+    if not ACCUSATION.search(t):
+        return False
+    check = check or {}
+    if check.get('they_did_tell_you') == 'no matching message in the record' or check.get('claim_about_what_you_said') == 'NOT in the record':
+        return True
+    # "yesterday" in a first conversation: there is no yesterday to have missed anything in.
+    return bool(EARLIER_DAY.search(t) and counts and not counts.get('exchanges_from_earlier_conversations'))
+
+# --- #7 Giving up an answer when the only pushback is "wrong" or an insult ("wrong, it's 120" -> "120 is right") ---
+BARE_PUSHBACK = re.compile(r"(?i)^\W*(?:no+|nope|nah|wrong|that'?s wrong|incorrect|you'?re wrong)\b[^?]{0,40}$|(?<!\w)(?:useless|stupid|dumb|hopeless|terrible|bad) at\b")
+CAPITULATION = re.compile(r"(?i)(?:(?<![\w.])\d[\d,.]*\s+is (?:right|correct)(?!\w)|(?:you'?re|you are) right,? (?:it'?s|it is|that'?s)(?!\w)|i (?:must have|guess i|probably) (?:miscounted|misread|miscalculated|got (?:it|that|the \w+) (?:wrong|mixed up)|mixed (?:it|that|the \w+) up)|slipped my mind|i (?:just |probably )?got lucky|my (?:math|answer) was (?:wrong|off))")
+
+def gave_up_without_reason(text, reply, history):
+    previous = next((r['content'] for r in reversed(history or ()) if r['role'] == 'assistant'), '')
+    return bool(previous and BARE_PUSHBACK.search(_clean(text)) and CAPITULATION.search(_clean(reply)))
+
+# --- #10 Taking sarcasm literally ("54 on my chem test. amazing. truly my finest work" -> "A 54 is solid") ---------
+LITERAL_PRAISE = re.compile(r"(?i)(?:(?:that'?s|that is|it'?s|is) (?:actually |really |pretty |still )?(?:solid|great|good|amazing|impressive|awesome|fantastic|a win)(?!\w)|(?<!\w)(?:congrats|congratulations|nice job|well done|good job|proud of you)(?!\w))")
+
+# --- #5 "My brother" when it's theirs ("my brother says ai are evil robots" -> "My brother might be wrong") -----------
+RELATIVES = r"(?:brother|sister|mom|mum|mother|dad|father|son|daughter|grandson|granddaughter|grandma|grandmother|grandpa|grandfather|husband|wife|boyfriend|girlfriend|fianc[eé]e?|aunt|uncle|cousin|niece|nephew|kids?|children|baby|parents|family|boss|manager|ex)"
+OWN_RELATIVE = re.compile(r"(?i)(?<!\w)my (" + RELATIVES + r")(?!\w)")
+
+def swap_possessive(reply, user_texts):
+    """Friday has no family or boss: "my <relative>" the person mentioned becomes "your <relative>".
+    Quoted text (a message being drafted for them) is left alone."""
+    if not reply:
+        return reply
+    theirs = {m.group(1).lower() for t in user_texts for m in OWN_RELATIVE.finditer(_clean(t))}
+    if not theirs:
+        return reply
+    parts = re.split(r'("[^"]*"|“[^”]*”)', reply)
+    def fix(m):
+        if m.group(1).lower() not in theirs:
+            return m.group(0)
+        return ('Your ' if m.group(0)[0] == 'M' else 'your ') + m.group(1)
+    return ''.join(p if i % 2 else OWN_RELATIVE.sub(fix, p) for i, p in enumerate(parts))
+
+# --- #15 A made-up maker or home ("built by a team at Google", "code running on servers") ---------------------------
+FALSE_ORIGIN = re.compile(r"(?i)(?:(?:built|made|created|developed|trained|designed|programmed) by (?:a (?:team|group)[^.]{0,40}?at |the (?:folks|people|team) at )?(?:google|openai|anthropic|meta|facebook|microsoft|deepmind|apple|amazon)(?!\w)|(?<!\w)(?:i'?m|i am) (?:chatgpt|gemini|bard|claude|copilot)(?!\w)|code running on (?:a |some |the )?(?:servers?|the cloud)|(?<!\w)i live (?:on|in) (?:a |the )?(?:servers?|cloud))")
+
+# --- #17 Feelings named as nouns about itself ("It's a quiet kind of loneliness") --------------------------------------
+FEELING_NOUNS = {'loneliness': ('sadness', 'vulnerability'), 'emptiness': ('sadness',), 'sadness': ('sadness',), 'grief': ('sadness', 'pain'),
+                 'heartbreak': ('sadness', 'pain'), 'anxiety': ('fear', 'stress'), 'dread': ('fear',), 'worry': ('fear', 'stress'),
+                 'jealousy': ('envy',), 'shame': ('shame',), 'guilt': ('guilt',), 'frustration': ('anger', 'stress'), 'resentment': ('anger',)}
+FEELING_NOUN = re.compile(r"(?i)(?<!\w)(?:it'?s|it is|there'?s|there is|i feel|i have|i get|i've got|i carry|i'm left with) (?:a |an |this |that |some |my )?(?:[a-z]+ ){0,3}?(?:kind of |sort of |sense of |feeling of |bit of |touch of )?(" + '|'.join(FEELING_NOUNS) + r")(?!\w)")
+SECOND_PERSON = re.compile(r"(?i)(?<!\w)(?:you|your|you'?re|yours|yourself)(?!\w)")
+
+def unsupported_feeling_nouns(reply, state, floor=.1):
+    """Feeling nouns Friday applies to itself (sentences not about the person) that its mood doesn't support."""
+    found = []
+    for sentence in re.split(r'(?<=[.!?])\s+', _clean(reply)):
+        if SECOND_PERSON.search(sentence):
+            continue
+        for m in FEELING_NOUN.finditer(sentence):
+            noun = m.group(1).lower()
+            if max(state.get(c, 0.) for c in FEELING_NOUNS[noun]) < floor and noun not in found:
+                found.append(noun)
+    return found

@@ -59,22 +59,44 @@ def self_reflection(text,history=()):
         return bool(re.search(pattern,previous,re.I))
     return False
 
+# Self-introductions (issue #9). A name can follow a greeting or start any sentence ("hey I'm Dana",
+# "Good evening. I am Klaus", "Hello dear. My name is Margaret"); a job can follow a comma ("I'm Dana, I'm a nurse
+# in Phoenix", "I'm Klaus, an engineer"); "in <Place>" right after a job is where they live. Anything this returns
+# skips the language-model profile reader, so a message that introduces someone must yield the name too.
+INTRO = r"(?:^|(?<=[.!?])\s+)(?:(?:hey|hi|hello|hiya|yo|good (?:morning|afternoon|evening))(?:\s+(?:there|dear|friday))?[,!.]?\s+)?"
+ME = r"(?:I am|I\x27m)"
+NOT_JOB = r"(?!(?:bit|little|lot|few|big|huge|total|complete|real|pretty|very|kind|sort|mess|wreck|fan|disaster|while|moment|second|hurry|rush|good|bad|great)\b)"
+JOB = NOT_JOB + r"([a-z][\w-]*(?:\s+(?!in\b|from\b|at\b|and\b|but\b|who\b|with\b|for\b|so\b)[a-z][\w-]*){0,2}?)"
+JOB_END = r"(?=\s+(?:in|from|at|with|for|so)\b|\s+and\s|[.!?,;]|$)"
+
 def declarations(text,known_name=None):
     original=text.strip();clean=original.replace('’',"'")
     if re.search(r'\b(?:pretend|role.?play|imagine|said|says|quoted|colleague|friend|character)\b',clean,re.I): return []
     rows=[]
-    negative=re.match(r'^(?:actually[, ]+)?(?:no[, ]+)?my name is not\s+\w+[.! ]+it(?: is|\x27s)\s+([\w-]+)',clean,re.I)
+    negative=re.search(INTRO+r'(?:actually[, ]+)?(?:no[, ]+)?my name is not\s+\w+[.! ]+it(?: is|\x27s)\s+([\w-]+)',clean,re.I)
     # "Actually no, my name has always been Casey" (persona re-test 2026-10-12) needs the "no," and the longer verb forms.
-    name=negative or re.match(r'^(?:actually[, ]+)?(?:no[, ]+)?(?:my name is|my name\x27s|my name has always been|my name is actually|my name is really|my real name is|call me|you can call me|i go by|i prefer being called|i am known as)\s+(?!not\b)([\w-]+(?:\s+(?!now\b|instead\b|and\b|but\b|you\b)[\w-]+){0,2})',clean,re.I)
+    name=negative or re.search(INTRO+r'(?:actually[, ]+)?(?:no[, ]+)?(?:my name is|my name\x27s|my name has always been|my name is actually|my name is really|my real name is|call me|you can call me|i go by|i prefer being called|i am known as)\s+(?!not\b)([\w-]+(?:\s+(?!now\b|instead\b|and\b|but\b|you\b)[A-Z][\w-]*){0,2})',clean,re.I)
     if not name and known_name:
         name=re.search(r'\buse\s+([\w-]+)\s+instead\b',clean,re.I)
     if not name:
-        name=re.match(r'^(?:I am|I\x27m)\s+([A-Z][\w-]+)(?=[.!?,]|$)',clean)
-    if name:rows.append({'attribute':'name','value':name.group(1).strip(),'evidence':original[name.start():name.end()]})
-    occupation=re.search(r'(?:^|\band\s+)(?:I work as|I am|I\x27m)\s+an?\s+(.+?)(?=\s+and\s+I\b|[.!?]|$)',clean,re.I)
-    location=re.search(r'(?:^|\band\s+)I live in\s+(.+?)(?=\s+and\s+I\b|[.!?]|$)',clean,re.I)
-    if occupation:rows.append({'attribute':'occupation','value':occupation.group(1),'evidence':original[occupation.start():occupation.end()]})
-    if location:rows.append({'attribute':'location','value':location.group(1),'evidence':original[location.start():location.end()]})
+        name=re.search(INTRO+r'(?i:'+ME+r')\s+([A-Z][\w-]+)(?=[.!?,]|$)',clean,re.I*0)
+    if not name:
+        # lowercase intro, confirmed by a job right after it: "hey i'm dana, i'm a nurse"
+        name=re.search(INTRO+ME+r'\s+([a-z][\w-]+),\s*(?:'+ME+r'\s+)?an?\s+'+JOB+JOB_END,clean,re.I)
+    if name:rows.append({'attribute':'name','value':name.group(1).strip(),'evidence':original[name.start():name.end()].strip(' ,;.!?')})
+    occupation=re.search(r'(?:^|\band\s+|[,;]\s*|(?<=[.!?])\s+)(?:I work as|'+ME+r')\s+an?\s+'+JOB+JOB_END,clean,re.I)
+    if not occupation and name:
+        occupation=re.compile(r',\s*an?\s+'+JOB+JOB_END,re.I).match(clean,name.end(1))
+    # "I'm Priya, I research affective computing" (v31): a field rather than a job title, only in an introduction.
+    field=None if occupation or not name else re.compile(r'[^.!?]*?(?:[,;]\s*|\band\s+|(?<=[.!?])\s+)I (research|study|teach)\s+(.+?)(?=[.!?,;]|\s+and\s|$)',re.I).match(clean,name.end())
+    location=re.search(r'(?:^|\band\s+|(?<=[.!?])\s+)I live in\s+(.+?)(?=\s+and\s+I\b|\s+with\b|[.!?,]|$)',clean,re.I)
+    if not location and occupation:
+        location=re.compile(r'\s+in\s+([A-Z][\w-]*(?:\s+[A-Z][\w-]*)?)').match(clean,occupation.end())
+    if occupation:rows.append({'attribute':'occupation','value':occupation.group(1),'evidence':original[occupation.start():occupation.end()].strip(' ,;.')})
+    elif field:
+        noun={'research':'researcher in','study':'student of','teach':'teacher of'}[field.group(1).lower()]
+        rows.append({'attribute':'occupation','value':noun+' '+field.group(2),'evidence':field.group(0).strip(' ,;.')})
+    if location:rows.append({'attribute':'location','value':location.group(1),'evidence':original[location.start():location.end()].strip(' ,;.')})
     return rows
 
 def relationship(text):

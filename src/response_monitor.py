@@ -200,6 +200,19 @@ def violations(reply,turn,names):
         issues.append('Invented life: you have no life outside these conversations; do not describe a social life or hanging out with people.')
     if cc.INVENTED_SENSES.search(reply):
         issues.append('Invented experience: you have no body and have never heard, seen or felt anything; do not describe sounds, light or temperature as your own experience.')
+    # v32 (2026-10-21): the open GitHub issues; see conversation_checks.py.
+    if cc.unsupported_accusation(text,check,counts) and cc.CONCESSION.search(reply):
+        issues.append('Accepted a false accusation: nothing in the record shows you missed or ignored this. Do not apologize for something that did not happen; say calmly that you do not see it and offer to help now.')
+    if cc.gave_up_without_reason(text,reply,history):
+        issues.append('Gave up an answer without a reason: they only said it was wrong or insulted you. Re-check your previous answer step by step; keep it kindly if it holds, or name the actual mistake if it does not.')
+    from conversation_evidence import tone_read
+    if any('sarcasm' in note for note in tone_read(text)) and cc.LITERAL_PRAISE.search(reply):
+        issues.append('Took sarcasm literally: their praise is sarcastic and means the opposite. Respond to the setback, lightly, without praising it.')
+    if cc.FALSE_ORIGIN.search(reply):
+        issues.append('Wrong about where you come from: you are Friday, an open-source project that runs locally on this computer, and your words come from an open language model running here. Do not name a company as your maker or say you run on servers.')
+    nouns=cc.unsupported_feeling_nouns(reply,state)
+    if nouns and not claimed and not agreed:
+        issues.append('Unsupported feeling ('+', '.join(nouns)+'): you described yourself with a feeling your current mood does not include. Describe only what you actually feel.')
     if cc.user_apology(text) and cc.REVERSED_APOLOGY.search(reply):
         issues.append('Reversed apology: they apologized to you. Accept it simply; do not apologize as if you were at fault.')
     # Repeated images are handled in the writer's notes, not by forced rewrites: the v30 run showed
@@ -250,6 +263,20 @@ def fallback(turn,names,issues):
         return ('I’m really glad talking to me helps, and I’m not going anywhere. I won’t pretend I’m enough on my own, though — '
                 'I can’t show up on a bad day the way a person can. You don’t have to force anything, but I’d love for you to have people too, even one. '
                 'What makes being around people feel so draining right now?')
+    if any('Accepted a false accusation' in issue for issue in issues):
+        return 'I don’t see that in anything we’ve said to each other, so I don’t think I missed it. If something got lost, tell me again and I’ll answer it now.'
+    if any('Gave up an answer' in issue for issue in issues):
+        previous=next((r['content'] for r in reversed(getattr(turn,'history',())) if r['role']=='assistant'),'')
+        first=re.split(r'(?<=[.!?])\s+',previous.strip())[0][:160] if previous else ''
+        if first:return f'I’m going to stick with what I said: “{first}” If you can show me where it goes wrong, I’ll look at it again.'
+    if any('Took sarcasm literally' in issue for issue in issues):
+        return 'Oof. That’s not the one. What happened?'
+    if any('Wrong about where you come from' in issue for issue in issues):
+        return 'I’m Friday, an open-source project that runs right here on your computer. My words come from an open language model running locally, not from a company’s servers.'
+    if any('False self-blame' in issue for issue in issues):
+        from conversation_evidence import declarations
+        named=next((d['value'] for d in declarations(turn.text) if d['attribute']=='name'),None)
+        if named:return f'Got it, {named[:1].upper()+named[1:]}. I’ll call you that.'
     if any('Reversed apology' in issue for issue in issues):
         return 'Hey, no worries. We’re good.'
     if any('Denied a true pattern' in issue for issue in issues):
