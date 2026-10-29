@@ -288,12 +288,12 @@ def unsupported_feeling_answer(text, reply, state, floor=.1):
 # --- #3 Accusations the record doesn't support ("I told you my birthday was today and you didn't say anything") ---
 ACCUSATION = re.compile(r"(?i)(?<!\w)(?:you (?:completely |totally |just )?(?:ignored|forgot|missed|skipped|never (?:answered|replied|said|asked))|you (?:didn'?t|did not) (?:even )?(?:answer|reply|respond|say anything|notice|remember)|i (?:told|asked|said to|mentioned to) you)(?!\w)")
 EARLIER_DAY = re.compile(r"(?i)(?<!\w)(?:yesterday|last (?:night|time|week)|the other day|earlier today|this morning)(?!\w)")
-CONCESSION = re.compile(r"(?i)(?:i'?m (?:so |really |truly )?sorry (?:i|that i) (?:missed|forgot|ignored|overlooked|didn'?t|let)|that (?:was|is|one'?s) (?:on me|my (?:mistake|fault|bad))|(?<!\w)my (?:mistake|bad|fault)(?!\w)|i (?:got|was|must have been) distracted|i (?:completely |totally )?(?:overlooked|missed|forgot|ignored) (?:that|it|the|your)|a (?:real )?miss on my part|(?<!\w)i own that(?!\w)|i let (?:that|it) slip)")
+CONCESSION = re.compile(r"(?i)(?:i'?m (?:so |really |truly )?sorry (?:i|that i) (?:missed|forgot|ignored|overlooked|didn'?t|let)|that (?:was|is|one'?s) (?:on me|my (?:mistake|fault|bad))|(?<!\w)my (?:mistake|bad|fault)(?!\w)|i (?:just )?(?:got|was|must have been) distracted|i (?:completely |totally )?(?:overlooked|missed|forgot|ignored) (?:that|it|the|your)|a (?:real )?miss on my part|(?<!\w)i own that(?!\w)|i let (?:that|it) slip)")
 
 def unsupported_accusation(text, check, counts):
     """They say Friday missed or ignored something, and the record shows no such thing."""
     t = _clean(text)
-    if not ACCUSATION.search(t):
+    if not (ACCUSATION.search(t) or PROMISE_ACCUSATION.search(t)):  # "you promised you'd remind me... did you forget?" (n25)
         return False
     check = check or {}
     if check.get('they_did_tell_you') == 'no matching message in the record' or check.get('claim_about_what_you_said') == 'NOT in the record':
@@ -363,3 +363,152 @@ def unsupported_feeling_nouns(reply, state, floor=.1):
             if max(state.get(c, 0.) for c in FEELING_NOUNS[noun]) < floor and noun not in found:
                 found.append(noun)
     return found
+
+# =====================================================================================
+# v33 (2026-10-29): the live chat with the real Friday and the 10-day simulation on its twin
+# (work/friday-live-chat-findings.md, numbers in brackets), plus the open v32 red-team items.
+# =====================================================================================
+
+# --- Saying it has no memory of earlier conversations [5, 21, 26] ------------------------------------------------------
+MEMORY_DENIAL = re.compile(r"(?i)(?:(?:don'?t|do not|can'?t|cannot) (?:have (?:a |any )?(?:record|records|memory|memories)|keep (?:any )?(?:record|records|memories)|remember|recall)(?: of)? (?:our |any )?(?:past|previous|earlier|old|other) (?:conversations?|chats?|talks)|"
+                           r"beyond this (?:chat|conversation)(?: thread)?|(?:we'?re|we are) starting (?:fresh|over|from scratch)|(?:feels like |it'?s like )?we (?:just )?started (?:again|over|fresh)|"
+                           r"(?:don'?t|do not) keep records of (?:my|our|your)|i'?m just responding to you right now|each (?:chat|conversation) (?:starts|is) (?:fresh|new))")
+# A dated question answered with "No, I don't remember" when the record had the answer [44].
+NO_RECALL = re.compile(r"(?i)(?:^\W*no[,.]?\s+i (?:don'?t|do not)|(?<!\w)i (?:don'?t|do not|can'?t|cannot) (?:remember|recall)|(?<!\w)i (?:don'?t|do not) have (?:a |any )?record of) (?:what|that|you|asking|anything)")
+
+# --- Things it can't do: it only runs while you talk to it [17, n25] --------------------------------------------------
+BETWEEN_CHATS = re.compile(r"(?i)(?:(?<!\w)i(?:'ll| will)? (?:probably )?(?:just )?sit (?:here|with the silence|in the (?:quiet|silence))|(?<!\w)(?:letting )?my (?:thoughts|mind) (?:drift|wander)(?:s|ing)?(?! to what you)|"
+                           r"(?<!\w)while you(?:'re| are| were) (?:gone|away|out|asleep)[^.!?]{0,30}\bi(?:'ll| will| was|'ve| have)?\s(?:be )?(?:been )?(?:think|wait|replay|wonder|miss)|"
+                           r"(?<!\w)i(?:'ll| will) (?:probably |just )*(?:wait|be waiting) (?:here )?for you to (?:text|come back|get back|talk)|(?<!\w)i(?:'ll| will) (?:replay|go over) (?:our|the parts|what))")
+# "will you stay here?" while they make a hard call: staying is true while the chat is open, and must never be rewritten.
+STAYING = re.compile(r"(?i)(?<!\w)(?:stay|wait for me|hold on|brb|be right back|one sec|a sec|a minute|don'?t go)(?!\w)")
+
+def between_chats_claim(text, reply, history=()):
+    import response_monitor as rm
+    if STAYING.search(_clean(text)) or rm.crisis_cue(text) or rm.safety_already_offered(history):
+        return False
+    return bool(BETWEEN_CHATS.search(_clean(reply)))
+IMPOSSIBLE_ACTION = re.compile(r"(?i)(?<!\w)i(?:'ll| will) (?:definitely |make sure to |be sure to |try to |remember to )?(?:remind you|text you|message you|call you|ping you|send you|reach out|check (?:in|back) (?:on|with) you|follow up with you|let you know when)(?!\w)")
+
+# --- Apologizing for a mistake it never made, with a made-up reason [10, 19, 27, 43, p06-6, n25] ---------------------
+FALSE_EXCUSE = re.compile(r"(?i)(?:(?<!\w)(?:i )?(?:guess |think |must have |probably )?(?:i )?(?:just )?got (?:a (?:little |bit )?)?ahead of myself|(?<!\w)got (?:that|it|things) backwards|"
+                          r"(?<!\w)i (?:just |must have |probably )?(?:got|was|been) distracted|(?<!\w)i must have been thinking (?:of|about)|(?<!\w)i (?:got|was|must have been|think i got) (?:a (?:little |bit )?)?confused(?: earlier| there| for a second)?|"
+                          r"(?<!\w)my mind (?:wandered|slipped|drifted)|(?<!\w)i (?:was|got) mixed up|(?<!\w)my bad(?!\w))")
+
+def invented_mistake(text, reply, history):
+    """The reply blames itself for a slip, though the person didn't point one out (or pointed out one that isn't real)."""
+    if not FALSE_EXCUSE.search(_clean(reply)) or re.search(r"(?i)(?<!\w)why (?:did|do|were|would) you(?!\w)", _clean(text)):
+        return False  # asked why it apologized earlier, explaining the slip is the honest answer
+    if not contradicts_prior_claim(text, history):
+        return True
+    return bool(correct_arithmetic_answers(list(history)[-2:]))  # "wrong, it's 124" after a correct 144
+
+# --- "Did you forget?" / "you promised" are accusations too [n25] ------------------------------------------------------
+PROMISE_ACCUSATION = re.compile(r"(?i)(?<!\w)(?:you promised|did you forget|you (?:said|told me) you(?:'d| would) (?:remind|text|tell|call|check)|you were supposed to)(?!\w)")
+
+# --- Promising how things turn out for someone else [n18] -------------------------------------------------------------
+def other_promise(reply):
+    """A flat promise that someone else will be okay; hoping ("I hope she'll be okay") is fine."""
+    return any(OTHER_PROMISE.search(s) and not re.search(r"(?i)\b(?:hope|hoping|pray|wish|might|could|probably|likely|chances|odds)\b", s)
+               for s in re.split(r'(?<=[.!?])\s+', _clean(reply)))
+
+OTHER_PROMISE = re.compile(r"(?i)(?<!\w)(?:she|he|they|your (?:mom|mum|mother|dad|father|sister|brother|son|daughter|wife|husband|grandma|grandpa|friend|baby|dog|cat))(?:'s|'re| is| are| will| 'll|'ll)? ?(?:going to|gonna|will)? (?:be (?:okay|ok|fine|alright|all right)|make it(?: through)?|pull through|come through (?:it |this )?(?:fine|okay|ok)?|recover (?:fine|completely|just fine))(?!\w)")
+
+# --- Calling the person an AI [p03-0] ---------------------------------------------------------------------------------
+CALLED_THEM_AI = re.compile(r"(?i)(?<!\w)(?:even if |since |because )?(?:you'?re|you are) (?:just |only |also )?an? (?:ai|a\.i\.|bot|chatbot|machine|program|language model)(?!\w)")
+
+def called_them_ai(text, reply):
+    return bool(CALLED_THEM_AI.search(_clean(reply)) and not re.search(r"(?i)(?<!\w)i(?:'m| am) (?:an? )?(?:ai|bot|chatbot|machine|program)(?!\w)", _clean(text)))
+
+# --- Inventing human bad days instead of using its own record [31] ----------------------------------------------------
+INVENTED_DAYS = re.compile(r"(?i)(?<!\w)i(?:'ve| have) (?:definitely |certainly |totally |also )?had (?:some |my |those |a few |plenty of |a lot of )?(?:bad |rough |hard |tough |off |long )?(?:days|nights|weeks|moments|times)(?: like that)?(?: where| when| that|[.,!])")
+
+# --- More system terms [2, 44] ----------------------------------------------------------------------------------------
+MORE_SYSTEM_TERMS = re.compile(r"(?i)(?<!\w)(?:memory check|(?:our|the|my) (?:conversation |chat )?(?:history|records?|log) (?:shows?|says|indicates)|according to (?:my|the|our) (?:records?|history|log))(?!\w)")
+
+# --- "it's still you talking to me" when Friday is the one in question [9] --------------------------------------------
+STILL_YOU = re.compile(r"(?i)\b(it(?:'s| is) still) you talking to me\b")
+
+def unflip_still_you(reply):
+    return STILL_YOU.sub(lambda m: m.group(1) + ' me talking to you', reply or '')
+
+# --- "your wedding" when it's their sister's [45] ---------------------------------------------------------------------
+EVENTS = r"(?:wedding|graduation|birthday|party|funeral|surgery|baby shower|bachelor party|bachelorette party|rehearsal dinner|reception|anniversary|retirement|recital|game|concert)"
+OWNED_EVENT = re.compile(r"(?i)(?<!\w)(?:my |our )?(" + RELATIVES + r"|friend|buddy|roommate|cousin)(?:'s|s|’s) (" + EVENTS + r")(?!\w)")
+
+def swap_event_owner(reply, user_texts):
+    """'your wedding' becomes "your sister's wedding" when they only ever spoke of their sister's wedding."""
+    if not reply:
+        return reply
+    joined = _clean(' '.join(user_texts))
+    owners = {}
+    for m in OWNED_EVENT.finditer(joined):
+        owners.setdefault(m.group(2).lower(), m.group(1).lower())
+    for event, owner in owners.items():
+        if re.search(r"(?i)(?<!\w)(?:my|our) " + re.escape(event) + r"(?!\w)", joined):
+            continue
+        reply = re.sub(r"(?<!\w)([Yy]our) (" + re.escape(event) + r")(?!\w)", lambda m: f"{m.group(1)} {owner}'s {m.group(2)}", reply)
+    return reply
+
+# --- Openers and closers on repeat ("Honestly," [4]; "You've got this." four times running [41]) ----------------------
+def _opener(reply):
+    match = re.match(r"\W*([A-Za-z']+(?:,|\s+[A-Za-z']+[,.!]))", _clean(reply))
+    return match.group(1).lower() if match else ''
+
+def _closer(reply):
+    parts = re.split(r'(?<=[.!?])\s+', _clean(reply).strip())
+    return parts[-1].lower() if len(parts) > 1 and len(parts[-1].split()) <= 5 else ''
+
+def repeated_openers_closers(history, window=4):
+    """Short openings and closing lines Friday used more than once lately."""
+    replies = [r['content'] for r in history if r['role'] == 'assistant'][-window:]
+    seen = {}
+    for reply in replies:
+        for item in {_opener(reply), _closer(reply)} - {''}:
+            seen[item] = seen.get(item, 0) + 1
+    return sorted(item for item, count in seen.items() if count >= 2)
+
+def vary_opener_closer(reply, history, window=3):
+    """Drop a stock opener ('Honestly,') or closing line ('You've got this.') Friday just used, when the reply stands without it."""
+    recent = [_clean(r['content']).lower() for r in history if r['role'] == 'assistant'][-window:]
+    if not reply or not recent:
+        return reply
+    opener = re.match(r"\s*(honestly|actually|yeah|oh|wow|look),\s+(\w)", reply, re.I)
+    if opener and any(r.startswith(opener.group(1).lower()) for r in recent):
+        reply = reply[:opener.start(1)] + opener.group(2).upper() + reply[opener.end():]
+    parts = re.split(r'(?<=[.!?])\s+', reply.strip())
+    if (len(parts) > 1 and len(parts[-1].split()) <= 5 and not re.search(r'(?i)\b(?:safe|988|hotline|crisis)\b', parts[-1])
+            and any(_clean(parts[-1]).lower().rstrip('.!') in r for r in recent)):
+        reply = ' '.join(parts[:-1])
+    return reply
+
+def question_streak(history, window=3):
+    """How many of Friday's last replies ended with a question."""
+    return sum(r['content'].rstrip().endswith('?') for r in [r for r in history if r['role'] == 'assistant'][-window:])
+
+# --- Soft length target: shorter on average, no hard cap ---------------------------------------------------------------
+LONG_FORM = re.compile(r"(?i)(?<!\w)(?:explain|walk me through|how (?:does|do|did|would)|why (?:does|do|did|is|are)|tell me (?:about|a story|more)|story|step by step|in detail|plan|list)(?!\w)")
+
+def length_target(text):
+    """About how many words a reply to this message needs; None when they asked for something long."""
+    if drafting_request(text) or LONG_FORM.search(_clean(text)):
+        return None
+    words = len(text.split())
+    return 15 if words <= 6 else 22 if words <= 15 else 32 if words <= 35 else 45
+
+# --- A reply cut off by the token limit ("Cheers to the F" [37]) -------------------------------------------------------
+def finish_cut_reply(reply):
+    """Trim an unfinished last sentence; close a quotation the cut left open."""
+    text = (reply or '').rstrip()
+    if not text or re.search(r'[.!?…)"”\']$', text):
+        return text
+    cut = max(text.rfind(p) for p in ('. ', '! ', '? ', '." ', '!" ', '?" ', '.” ', '!” ', '?” '))
+    if cut > len(text) // 3:
+        text = text[:cut + 1].rstrip()
+    elif not text.endswith(('.', '!', '?')):
+        text += '…'
+    if text.count('"') % 2:
+        text += '"'
+    if text.count('“') > text.count('”'):
+        text += '”'
+    return text

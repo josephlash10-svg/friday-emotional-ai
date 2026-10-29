@@ -134,10 +134,13 @@ class ExperienceTests(unittest.TestCase):
         self.assertEqual(self.agent.experience.depth,depth)
 
     def test_memory_is_bounded_and_unknown_other_names_are_not_my_identity(self):
+        self.agent.experience.capacity=64  # an instance limit keeps the test fast; the class default is larger
         for index in range(70):
             text=f'ordinary statement {index}'
             self.exchange(text,frame(text,'ordinary','none'))
         self.assertEqual(len(self.agent.experience.data['episodes']),64)
+        # Dropped exchanges still count in their conversation's summary.
+        self.assertEqual(self.agent.experience.data['conversations'][-1]['exchanges'],70)
         text='My friend is named Alex'
         self.exchange(text,frame(text,'ordinary','none'))
         self.assertEqual(self.agent.experience.data['user'],{})

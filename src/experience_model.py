@@ -5,12 +5,14 @@ before any proposal can update identity, lessons, or conversational feedback.
 Confidence is a heuristic, not a calibrated probability of truth.
 """
 import copy
+import datetime
 import math
 import re
 import time
 from dataclasses import replace
 from developmental_emotion import OwnEvent
-from conversation_evidence import declarations,correction_topics,speaker_terms,belief_revision,interpersonal_report
+from conversation_evidence import declarations,correction_topics,speaker_terms,belief_revision,interpersonal_report,content_words
+import time_sense
 
 KINDS=('ordinary','correction','feedback','introduction','relationship','preference','self_question')
 SCOPES=('intent','answer','relationship','preference','external_fact','identity','none')
@@ -41,21 +43,124 @@ def validate_frame(text, proposed):
     return out
 
 class ExperienceModel:
-    capacity=64
+    # Raw exchanges kept word for word. It was 64, about five days of talking (10-day simulation, 2026-10-29); the
+    # oldest still drop first, but every exchange also leaves a trace in its conversation's summary, which is kept.
+    capacity=400
+    lesson_capacity=64
+    conversation_capacity=300
+    highlights_per_conversation=8
     def __init__(self,snapshot=None):
         self.data={'version':1,'self':{'name':'Friday','nature':'computational emotional agent'},
                    'user':{},'relationship':{'description':'conversation partners','source':'initial design'},
                    'goals':{'understanding':.8,'usefulness':.7,'continuity':.5},
                    'lessons':[],'episodes':[],'last_significant':None,
                    'stats':{'interactions':0,'corrections':0,'feedback':0,'confirmed_transfers':0},
-                   'needs':[.5]*7}
+                   'needs':[.5]*7,'conversations':[],'events':[]}
         if snapshot is not None:
             if not isinstance(snapshot,dict) or snapshot.get('version')!=1: raise ValueError('Unsupported experience memory')
-            if len(snapshot.get('episodes',[]))>self.capacity or len(snapshot.get('lessons',[]))>self.capacity:
+            if len(snapshot.get('episodes',[]))>self.capacity or len(snapshot.get('lessons',[]))>self.lesson_capacity:
                 raise ValueError('Experience memory exceeds capacity')
             self.data=copy.deepcopy(snapshot)
+            if 'conversations' not in self.data:self._backfill()
 
     def snapshot(self): return copy.deepcopy(self.data)
+
+    # --- Conversations, events and feelings over time (v33) ---------------------------------------------------------
+    def _backfill(self):
+        """Memories saved before v33 have episodes but no conversation summaries or events: rebuild them from the episodes."""
+        self.data['conversations'],self.data['events']=[],[]
+        for episode in self.data['episodes']:
+            try:said=time_sense.parse(episode['time_utc'])
+            except (KeyError,ValueError,TypeError):continue
+            self._note_conversation(episode,said);self._note_events(episode['input'],said)
+
+    @staticmethod
+    def _highlight_score(episode):
+        text=episode['input'];lower=text.lower().replace('’',"'")
+        words=content_words(text)
+        if len(words)<2:return 0.
+        before,after=episode.get('before',{}),episode.get('after',{})
+        salience=max((abs(v-before.get(k,0)) for k,v in after.items()),default=0)
+        score=min(.5,.06*len(words))+2*salience
+        if re.search(r"\b(?:i|i'm|im|i've|my|me|we|our)\b",lower):score+=.25
+        if time_sense.announced_events(text,time.time()):score+=.3
+        if '?' in text and not re.search(r"\b(?:my|i'm|im|i)\b",lower):score-=.4  # a question about Friday, not news about them
+        return score
+
+    def _note_conversation(self,episode,said):
+        """Fold one exchange into its conversation's summary: when, how many exchanges, the most telling things they
+        said, and how Friday's feelings moved. Episodes can then be dropped without losing what a conversation was about."""
+        conversations=self.data.setdefault('conversations',[])
+        current=conversations[-1] if conversations else None
+        if current is None or said-time_sense.parse(current['end_utc'])>time_sense.NEW_CONVERSATION_GAP:
+            current={'id':(current['id']+1) if current else 1,'start_utc':episode['time_utc'],'end_utc':episode['time_utc'],
+                     'exchanges':0,'highlights':[],'feelings':[]}
+            conversations.append(current);del conversations[:-self.conversation_capacity]
+        current['end_utc']=episode['time_utc'];current['exchanges']+=1
+        score=self._highlight_score(episode)
+        if score>.2:
+            current['highlights'].append({'time_utc':episode['time_utc'],'text':episode['input'][:140],'score':round(score,3)})
+            if len(current['highlights'])>self.highlights_per_conversation:
+                current['highlights'].remove(min(current['highlights'],key=lambda h:h['score']))
+        before,after=episode.get('before',{}),episode.get('after',{})
+        for name,value in after.items():
+            change=value-before.get(name,0)
+            if change<.05:continue
+            known=next((f for f in current['feelings'] if f['emotion']==name),None)
+            if known and known['change']>=change:continue
+            if known:current['feelings'].remove(known)
+            current['feelings'].append({'emotion':name,'change':round(change,3),'time_utc':episode['time_utc'],'about':episode['input'][:100]})
+        current['feelings']=sorted(current['feelings'],key=lambda f:f['change'],reverse=True)[:4]
+
+    def _note_events(self,text,said):
+        """Remember dated events they announce, so "tomorrow" can become "last night" when they come back."""
+        events=self.data.setdefault('events',[])
+        for event in time_sense.announced_events(text,said):
+            head=event['what'].split()[-1].lower()
+            day=datetime.date.fromisoformat(event['date'])
+            same=next((e for e in events if e['what'].split()[-1].lower()==head and abs((datetime.date.fromisoformat(e['date'])-day).days)<=7),None)
+            if same:
+                # The newest statement of the date wins; the more specific name ("their sister's wedding") is kept.
+                same.update(date=event['date'],part=event['part'],said_utc=time_sense.stamp(said),evidence=event['evidence'])
+                if len(event['what'])>len(same['what']):same['what']=event['what']
+            else:events.append({**event,'said_utc':time_sense.stamp(said)})
+        today=time_sense.local_date(said)
+        self.data['events']=[e for e in events if (datetime.date.fromisoformat(e['date'])-today).days>-30][-40:]
+
+    def conversation_split(self,now=None):
+        """(earlier conversations, the current one or None). A conversation is current until 3 hours of silence."""
+        now=time.time() if now is None else now
+        conversations=self.data.get('conversations',[])
+        if conversations and now-time_sense.parse(conversations[-1]['end_utc'])<=time_sense.NEW_CONVERSATION_GAP:
+            return conversations[:-1],conversations[-1]
+        return conversations,None
+
+    def events_near(self,now=None,back=4,ahead=14):
+        """Their dated events from a few days ago to two weeks ahead, with where each stands now."""
+        now=time.time() if now is None else now
+        today=time_sense.local_date(now)
+        near=[e for e in self.data.get('events',[]) if -back<=(datetime.date.fromisoformat(e['date'])-today).days<=ahead]
+        return [time_sense.event_status(e,now) for e in sorted(near,key=lambda e:e['date'])]
+
+    def conversation_overview(self,now=None,limit=6,per=3):
+        """The last few conversations, oldest first: when, and the most telling things they said."""
+        now=time.time() if now is None else now
+        earlier,current=self.conversation_split(now)
+        rows=[]
+        for conversation in (earlier+([current] if current else []))[-limit:]:
+            top=sorted(conversation['highlights'],key=lambda h:h['score'],reverse=True)[:per]
+            rows.append({'when':time_sense.when_words(time_sense.parse(conversation['start_utc']),now),
+                         'they_said':[h['text'] for h in sorted(top,key=lambda h:h['time_utc'])]})
+        return rows
+
+    def feeling_history(self,now=None,limit=5):
+        """The biggest rises in Friday's own feelings across recent conversations: what, when, and during what."""
+        now=time.time() if now is None else now
+        rows=[dict(f) for c in self.data.get('conversations',[])[-12:] for f in c.get('feelings',[])]
+        rows=sorted(rows,key=lambda f:f['change'],reverse=True)[:limit]
+        return [{'emotion':f['emotion'],'size':'noticeable' if f['change']>=.1 else 'small',
+                 'when':time_sense.when_words(time_sense.parse(f['time_utc']),now),'while_they_said':f['about']}
+                for f in sorted(rows,key=lambda f:f['time_utc'])]
     @property
     def depth(self):
         stats=self.data['stats']
@@ -211,7 +316,7 @@ class ExperienceModel:
                 entry={'id':max([v['id'] for v in self.data['lessons']],default=0)+1,'scope':scope,'lesson':frame['lesson'],
                        'evidence':frame['evidence'],'confidence':frame['confidence'],'status':status,
                        'semantic_key':prepared['semantic_key'],'semantic_class':prepared['semantic_class']}
-                self.data['lessons'].append(entry);self.data['lessons']=self.data['lessons'][-self.capacity:]
+                self.data['lessons'].append(entry);self.data['lessons']=self.data['lessons'][-self.lesson_capacity:]
             self.data['goals']['understanding']=min(1.,self.data['goals']['understanding']+.02)
         attribute,value=frame['attribute'],frame['value']
         if kind in ('introduction','correction'):
@@ -231,10 +336,12 @@ class ExperienceModel:
         names=prepared.get('emotion_names',())
         before=dict(zip(names,turn.before.emotion.tolist()))
         after=dict(zip(names,turn.state.emotion.tolist()))
-        episode={'id':stats['interactions'],'time_utc':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),'input':text[:400],'response':response[:400],
+        now=time.time()
+        episode={'id':stats['interactions'],'time_utc':time_sense.stamp(now),'input':text[:400],'response':response[:400],
                  'interpretation':prepared['frame'],'applied_lessons':prepared['applied_lessons'],
                  'before':before,'after':after,'development':turn.development,'feedback_used':False}
         self.data['episodes'].append(episode);self.data['episodes']=self.data['episodes'][-self.capacity:]
+        self._note_conversation(episode,now);self._note_events(text,now)
         significant=turn.development and turn.development['event']['relevance']>.35
         if prepared['frame']['kind'] in ('correction','feedback','introduction','relationship','preference') or significant:
             # Compact, source-backed narrative for later self explanations.

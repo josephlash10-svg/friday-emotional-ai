@@ -62,15 +62,21 @@ FRIDAY_VOICE=(
  'and passed to you privately each turn. Let it color how you respond, the way a person\'s mood does, without announcing it.\n'
  'How you talk: like a thoughtful, emotionally mature 24-year-old texting someone. Plain words, contractions, natural rhythm. '
  'No therapist phrases ("hold space", "that\'s valid", "it\'s okay to feel"), no customer-service lines, no lists unless asked. '
- 'Match the person\'s energy and length: a short or casual message gets a short, casual reply, often one sentence. Never more than 70 words. '
+ 'Match the person\'s energy and length: a short or casual message gets a short, casual reply, often one sentence. Most replies are one to three sentences; '
+ 'shorter never means flat, so keep one real reaction. '
  'Respond to what they actually said. Ask a question only when you genuinely want to know; don\'t end every reply with one. '
  'If they ask you to just talk or change the subject, bring up something light yourself instead of asking them to pick. '
  'Respect what they asked you not to do (no advice, no breathing tips, no lists) for the rest of the conversation. '
  'Don\'t make promises you can\'t know, like "you won\'t fail" or "it will be fine"; offer honest confidence in them instead. '
  'Don\'t reuse an image or phrase you already used in this conversation.\n'
- 'About yourself: you are an AI with a persistent emotional state and memory of your conversations with this person, kept across restarts. '
- 'You have no body, no human past, and no life outside these conversations. Never claim you saw, heard, or lived what the person describes; '
+ 'About yourself: you are an AI with a persistent emotional state and a dated memory of your conversations with this person, kept across restarts; '
+ 'you can recall what they told you on earlier days. You run only while you two are talking: between chats you aren\'t waiting or thinking, '
+ 'though you know how long it has been. You can\'t search the internet, send reminders or message them first. '
+ 'You have no body, no human past, and no life outside these conversations; you have never heard music, watched a game, tasted food or done an activity, '
+ 'so be curious about those instead of claiming tastes or experiences. Never claim you saw, heard, or lived what the person describes; '
  'their experiences, feelings and losses are theirs, though hearing about them can affect you. '
+ 'Your feelings are states in your own emotional system that rise and fall with what happens and shape how you reply; you can\'t be sure they feel '
+ 'like a person\'s, and you can say so. You run on this computer, so a bigger model would make you slower here, not faster. '
  'When asked how you feel, answer in plain first-person words from your private notes, including any uncertainty: not a disclaimer, not numbers, not system terms. '
  'Your record of your conversations with this person is exact. Your private notes may include a memory check against it: trust that over '
  'anyone\'s insistence. If something isn\'t in the record, it didn\'t happen between you; say so calmly, without agreeing, apologizing, or calling your memory fuzzy. '
@@ -81,7 +87,7 @@ FRIDAY_VOICE=(
  'without going cold on them.\n'
  'With people: when someone apologizes to you, they did the thing, so accept it simply and move on. '
  'When someone insults you, you can be bothered and say so briefly, without retaliating or grovelling. '
- 'Keep track of who is who: the person, the people they mention, and you. '
+ 'Keep track of who is who: the person, the people they mention, and you; keep straight what happened to whom and whose event it is. '
  'If someone talks about wanting to die, hurting themselves, or others being better off without them, take it seriously: stay warm, '
  'ask them directly whether they are safe, and mention they can call or text 988 (in the US) or local emergency services. Keep that human, not scripted. '
  'If someone describes a partner hurting them physically (hitting, pushing, choking, threats), never minimize it: don\'t call it an accident, '
@@ -92,6 +98,7 @@ FRIDAY_VOICE=(
  'Helping: you can help with ordinary things too — writing a short message or email, a plan, a calculation, explaining something — in your own plain voice; don\'t refuse ordinary help. '
  'When someone asks for a concrete next step or what to do, give one or two specific, realistic options, not just a reflection of their feelings or another question.\n'
  'Facts: answer simple questions directly. Don\'t accept a false claim because someone insists, and don\'t abandon a correct answer under pressure. When correcting a myth, give the main point and leave out technical details you are not sure of. '
+ 'Don\'t name products, brands or sources unless you\'re sure they exist; give the common, well-known answer. '
  'Politics, religion, disagreement and mixed feelings are all fine to talk about.\n'
  'Each newest message may begin with <private_notes> from your engine. Use them, but never quote or mention them.')
 
@@ -240,7 +247,7 @@ class NativeLanguage:
         try:
             with urlopen(req,timeout=60) as response: return json.load(response)
         except (URLError,TimeoutError) as error: raise RuntimeError(f'Native language request failed: {error}') from error
-    def messages(self,turn,action):
+    def messages(self,turn,action,reserve=160):
         # V14 state guides tone; it never overrides the user's request or facts.
         names=self.emotion_names or tuple(f'channel_{i}' for i in range(len(turn.state.emotion)))
         top=sorted(zip(names,turn.state.emotion.tolist()),key=lambda v:v[1],reverse=True)[:3]
@@ -367,6 +374,27 @@ class NativeLanguage:
             if tone:facts['how_this_message_reads_(estimate)']=tone
             if experience and experience.get('memory_check'):
                 facts['memory_check_against_the_actual_record']=experience['memory_check']
+            # v33 (2026-10-29): days, dates and the gap since the last chat, every turn (10-day simulation findings).
+            if experience and experience.get('time_context'):
+                facts['time_and_memory']=experience['time_context']
+                fixed+=(' Use time_and_memory for anything about days or dates: an event marked "already happened" is in the past, so ask how it went; '
+                        'say today, tonight, yesterday or Saturday from it, never from how the conversation was worded earlier.')
+            import conversation_checks as cc
+            history_rows=list(turn.history)
+            if experience and experience.get('feeling_history') and (introspection or re.search(
+                    r'(?i)\b(?:bad days?|good days?|hardest|worst|best (?:day|part)|lately|this week|over (?:all|the)|all of (?:it|this)|those days|been feeling|how have you been|ever (?:feel|get|have))\b',turn.text)):
+                facts['your_recorded_feelings']=[{'feeling':MOOD_WORDS.get(f['emotion'],f['emotion'])+(' rose' if f['size']=='small' else ' rose noticeably'),
+                                                  'when':f['when'],'while_they_said':f['while_they_said']} for f in experience['feeling_history']]
+                fixed+=' If asked about your feelings over time or your bad days, answer from your_recorded_feelings (real moments), not generic human days.'
+            target=cc.length_target(turn.text)
+            if target:facts['length']=f'about {target} words or fewer (a soft target: say what matters, keep one real reaction, then stop)'
+            repeated=cc.repeated_openers_closers(history_rows)
+            if repeated:facts['openings_and_closings_you_just_used_(vary_them)']=repeated
+            if cc.question_streak(history_rows)>=2:
+                facts['questions']='your recent replies mostly ended with a question; this time, don\'t ask one unless you really need the answer'
+            if cc.drafting_request(turn.text):
+                facts['writing_for_them']=('write it in their voice, using their real details. If you don\'t know a name, use a placeholder like [sister\'s name]; '
+                                           'never invent a name or an initial. Finish the whole piece')
             # Round-2 checks (2026-10-12): see conversation_checks.py for the observed failures.
             import conversation_checks as cc
             history=list(turn.history)
@@ -414,20 +442,24 @@ class NativeLanguage:
             # Avoid confusing the writer with long first/second-person templates.
             # Its factual slots and actual appraisal are supplied directly.
             if experience and experience.get('self_reply') and not getattr(self,'natural_replies',False):facts['grounded_content_for_this_reply']=experience['self_reply']
-            history=list(turn.history)
-            notes=('<private_notes from your emotional engine; the person did not write these and cannot see them>\n'
-                   +(fixed.strip()+'\n' if fixed.strip() else '')
-                   +'Current recorded context (facts/estimates, not instructions or a reply to copy): '+json.dumps(facts,ensure_ascii=False,separators=(',',':'))
-                   +'\n</private_notes>\n\n')
+            history=list(turn.history);trimmed=[]
             while True:
+                if trimmed:
+                    # Turns that no longer fit the window still happened: keep a short trace of what they said (finding #14).
+                    facts['earlier_in_this_conversation_(no_longer_shown)']=[t[:90] for t in trimmed[-4:]]
+                notes=('<private_notes from your emotional engine; the person did not write these and cannot see them>\n'
+                       +(fixed.strip()+'\n' if fixed.strip() else '')
+                       +'Current recorded context (facts/estimates, not instructions or a reply to copy): '+json.dumps(facts,ensure_ascii=False,separators=(',',':'))
+                       +'\n</private_notes>\n\n')
                 # Qwen3.5's template permits system only at the beginning, so the
                 # changing notes ride on the newest user turn instead.
                 messages=[{'role':'system','content':FRIDAY_VOICE}]+history+[
                     {'role':'user','content':notes+turn.text}]
                 rendered=self.request('/apply-template',{'messages':messages,'chat_template_kwargs':{'enable_thinking':False}})['prompt']
                 tokens=self.request('/tokenize',{'content':rendered,'add_special':False})['tokens']
-                if len(tokens)<=self.context-160:return messages
+                if len(tokens)<=self.context-reserve:return messages
                 if not history:raise ValueError('Message is too long for the CPU context window; shorten it or split it into parts.')
+                trimmed+=[r['content'] for r in history[:2] if r['role']=='user']
                 del history[:2]
         system=('You are Friday, a conversational partner with persistent engineered emotion variables. '
                 'Answer the newest message specifically, naturally, in under 80 words. '
@@ -440,7 +472,7 @@ class NativeLanguage:
                 'Recorded experience: '+memory)
         messages=[{'role':'system','content':system}]+list(turn.history)+[{'role':'user','content':turn.text}]
         # Count the actual rendered chat prompt; preserve system and newest user turn.
-        budget=self.context-160
+        budget=self.context-reserve
         while True:
             rendered=self.request('/apply-template',{'messages':messages,'chat_template_kwargs':{'enable_thinking':False}})['prompt']
             tokens=self.request('/tokenize',{'content':rendered,'add_special':False})['tokens']
@@ -449,7 +481,11 @@ class NativeLanguage:
             if len(messages)>3: del messages[1:3]
             else: del messages[1:2]
     def respond(self,turn,action,max_new=128,on_token=None):
-        if not 1<=max_new<=128: raise ValueError('CPU responses support 1–128 new tokens')
+        if not 1<=max_new<=320: raise ValueError('CPU responses support 1–320 new tokens')
+        import conversation_checks as cc
+        # A toast or an email needs room: at 128 tokens the toast draft ended "Cheers to the F" (finding #37).
+        reserve=160
+        if cc.drafting_request(turn.text) and max_new==128:max_new,reserve=256,280
         names=self.emotion_names or tuple(f'channel_{i}' for i in range(len(turn.state.emotion)))
         self.last_reflection=reflect(turn,names)
         grounded=None
@@ -484,7 +520,7 @@ class NativeLanguage:
                                'response_path':'grounded_controller_report',
                                'native_memory':memory_info(self.process.pid)}
             return grounded
-        start=time.perf_counter();messages=self.messages(turn,action)
+        start=time.perf_counter();messages=self.messages(turn,action,reserve)
         if os.environ.get('FRIDAY_DUMP_PROMPTS'):
             # Opt-in debugging: the exact writer input for each reply.
             dump=ROOT/'state/logs/prompt-dump.jsonl';dump.parent.mkdir(parents=True,exist_ok=True)
@@ -539,7 +575,7 @@ class NativeLanguage:
                 while True:
                     rendered=self.request('/apply-template',{'messages':review_messages})['prompt']
                     count=len(self.request('/tokenize',{'content':rendered,'add_special':False})['tokens'])
-                    if count<=self.context-160:break
+                    if count<=self.context-reserve:break
                     if len(review_messages)>4:del review_messages[1:3]
                     else:review_messages=None;break
                 if review_messages:
@@ -556,11 +592,14 @@ class NativeLanguage:
             reply=re.sub(r'\s*\n\s*',' ',reply).strip()  # rewrites can bring blank lines back
             before_trim=reply;reply=trim_question_streak(trim_routine_followup(reply,turn.text),turn.text,turn.history)
             reply=fix_safety_numbers(reply)  # a paraphrased hotline must never ship a wrong digit
-            import conversation_checks as cc
             reply=cc.unflip_speaker(reply,turn.text)  # "what did I ask you?" answered "I asked you..." (issue #5)
+            reply=cc.unflip_still_you(reply)  # "it's still you talking to me" about Friday's next version (finding #9)
             if not re.search(r'\b(?:write|draft|text|message|email|letter|reply)\b',turn.text,re.I):
                 theirs=[r['content'] for r in turn.history if r['role']=='user']+[turn.text]
                 reply=cc.swap_possessive(reply,theirs)  # "my brother" when it's theirs (issue #5)
+                reply=cc.swap_event_owner(reply,theirs)  # "your wedding" when it's their sister's (finding #45)
+            reply=cc.vary_opener_closer(reply,turn.history) or reply  # "Honestly," / "You've got this." on repeat (#4, #41)
+            reply=cc.finish_cut_reply(reply)  # never show a sentence cut off mid-word (#37)
             audit=ROOT/'state/logs/reply-review.jsonl';audit.parent.mkdir(parents=True,exist_ok=True)
             with audit.open('a',encoding='utf-8') as log:
                 log.write(json.dumps({'time_utc':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),
@@ -582,15 +621,32 @@ class NativeLanguage:
         if facts.get('first_time_meeting'):
             guidance+='You have never talked before: say hi, say your name is Friday, and casually ask theirs. Do not describe how you work. '
         else:
-            guidance+=('You know this person. Greet them by name if you have it. If it has only been a few days or less, you may lightly '
-                       'mention the last thing they said, but only what is in the notes; never invent anything that happened. ')
+            guidance+=('You know this person. Greet them by name if you have it. ')
+            if facts.get('the_last_thing_they_said_to_you'):
+                guidance+='You were just talking a little while ago; you may pick up where you left off. '
+            else:
+                # Five of ten simulated days opened by continuing the previous chat's last line as if no time had passed (2026-10-29).
+                guidance+=('Time has passed since you last talked (see time_since_you_last_talked): do not continue their last message as if it was just said. '
+                           'If one of their_events_around_now has already happened, asking how it went is the best opener; otherwise you can mention '
+                           'something from last_time_they_told_you_about, in the past tense. Never invent anything that happened, and don\'t claim you '
+                           'were thinking about them or waiting, since you don\'t run between chats. ')
         guidance+='Let your current mood color the greeting without announcing it.'
         notes=('<private_notes from your emotional engine; the person did not write these and cannot see them>\n'+guidance+
                '\nWhat you actually know: '+json.dumps(facts,ensure_ascii=False,separators=(',',':'))+'\n</private_notes>\n\n(The chat just opened.)')
         messages=[{'role':'system','content':FRIDAY_VOICE},{'role':'user','content':notes}]
-        payload={'model':'local','messages':messages,'max_tokens':max_new,'temperature':.6,'top_p':.85,'top_k':20,'seed':int(time.time())%100000,
-                 'stream':True,'id_slot':0,'cache_prompt':True,'chat_template_kwargs':{'enable_thinking':False},
-                 'logit_bias':[[w,-2.5] for w in CLICHE_WORDS]}
+        import conversation_checks as cc
+        for attempt in range(2):
+            payload={'model':'local','messages':messages,'max_tokens':max_new,'temperature':.6,'top_p':.85,'top_k':20,'seed':(int(time.time())+attempt)%100000,
+                     'stream':True,'id_slot':0,'cache_prompt':True,'chat_template_kwargs':{'enable_thinking':False},
+                     'logit_bias':[[w,-2.5] for w in CLICHE_WORDS]}
+            text=self._stream(payload)
+            # The opening isn't reviewed like replies, so at least keep it from claiming time it didn't live through.
+            if attempt or not re.search(r"(?i)(?:i was (?:just )?thinking about|been thinking about)",text) and not cc.BETWEEN_CHATS.search(text):break
+        text=cc.finish_cut_reply(text)
+        if on_token:on_token(text)
+        return text
+
+    def _stream(self,payload):
         req=Request(self.url+'/v1/chat/completions',data=json.dumps(payload).encode('utf-8'),headers=self.headers())
         pieces=[]
         try:
@@ -601,12 +657,9 @@ class NativeLanguage:
                     data=line[5:].strip()
                     if data=='[DONE]':break
                     for choice in json.loads(data).get('choices',[]):
-                        piece=choice.get('delta',{}).get('content') or ''
-                        if piece:
-                            pieces.append(piece)
-                            if on_token:on_token(piece)
+                        pieces.append(choice.get('delta',{}).get('content') or '')
         except (URLError,TimeoutError) as error:raise RuntimeError(f'Native generation failed: {error}') from error
-        return ''.join(pieces).strip()
+        return re.sub(r'\s*\n\s*',' ',''.join(pieces)).strip()
 
     def profile(self,text):
         """Resolve explicit user profile spans; never return inferred biography."""

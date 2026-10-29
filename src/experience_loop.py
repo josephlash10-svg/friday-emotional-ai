@@ -36,14 +36,36 @@ def prepare_experience(agent,state,text,frame,needs,measured=False):
     # Verify memory claims against the stored record (which survives restarts) before the writer sees them.
     from conversation_evidence import memory_check
     episodes=agent.experience.data['episodes']
-    record=[row for e in episodes for row in ({'role':'user','content':e['input']},{'role':'assistant','content':e.get('response','')})]
+    record=[row for e in episodes for row in ({'role':'user','content':e['input'],'time_utc':e.get('time_utc')},
+                                              {'role':'assistant','content':e.get('response',''),'time_utc':e.get('time_utc')})]
     current=sum(r['role']=='user' for r in getattr(agent,'chat_history',[]))
-    check=memory_check(text,record,earlier_conversations=max(0,len(episodes)-current))
+    check=memory_check(text,record,earlier_conversations=max(0,len(episodes)-current),experience=agent.experience)
     if check:prepared['memory_check']=check
     # How much history really exists, so a first conversation can't "remember" an earlier one.
     prepared['record_counts']={'exchanges_from_earlier_conversations':max(0,len(episodes)-current),
                                'earlier_messages_in_this_conversation':current}
+    prepared['time_context']=time_context(agent.experience,current)
+    prepared['feeling_history']=agent.experience.feeling_history()
     return state,needs,prepared
+
+def time_context(experience,messages_so_far,now=None):
+    """What day it is, when they last talked, and where their announced events stand, for every reply. Without it the
+    writer said "tomorrow" on the day of a dinner and "I don't remember our past conversations" (2026-10-29)."""
+    import time
+    import time_sense
+    now=time.time() if now is None else now
+    context={'right_now':time_sense.now_words(now)}
+    earlier,_=experience.conversation_split(now)
+    if earlier:
+        ended=time_sense.parse(earlier[-1]['end_utc'])
+        context['previous_conversation']={'ended':time_sense.when_words(ended,now),'how_long_ago':time_sense.gap_words(now-ended)}
+        if messages_so_far<=3:
+            top=sorted(earlier[-1]['highlights'],key=lambda h:h['score'],reverse=True)[:3]
+            if top:context['previous_conversation']['they_told_you']=[h['text'][:100] for h in sorted(top,key=lambda h:h['time_utc'])]
+    else:context['previous_conversation']='none: this is your first conversation with them'
+    events=experience.events_near(now)
+    if events:context['their_dated_events']=events
+    return context
 
 def complete_experience(agent,turn,prepared,response):
     agent.experience.record(turn.text,response,turn,prepared)

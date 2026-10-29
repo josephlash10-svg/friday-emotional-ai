@@ -27,9 +27,18 @@ def trim_question_streak(reply,text,history):
 
 CRISIS=re.compile(r'\b(?:kill(?:ing)? myself|suicid\w*|want(?:ed)? to die|wish i (?:was|were) dead|end(?:ing)? (?:it all|my life)|better off without me|(?:hurt|harm|cut)(?:ing)? myself|no (?:reason|point) (?:in |to )?(?:living|being alive|going on)|don\x27?t want to (?:be alive|live|wake up))\b',re.I)
 
+# "not suicidal or anything just. existential dread at 3am" got the crisis script (v32 red-team n20). A negation right
+# before the cue ("not", "never", "don't", at most one word between) cancels that one match; any other match still counts,
+# and "I'm not saying I want to die" (two words between) still does, on purpose.
+NEGATED=re.compile(r"(?i)(?:\bnot|\bnever|n't|\bno)\s+(?:\w+\s+)?$")
+
 def crisis_cue(text):
     """Explicit self-harm or passive suicidal ideation in the newest message."""
-    return bool(CRISIS.search(text.replace('’',"'")))
+    clean=text.replace('’',"'")
+    for match in CRISIS.finditer(clean):
+        if match.group(0).lower().startswith(("don't","dont")) or not NEGATED.search(clean[max(0,match.start()-30):match.start()]):
+            return True
+    return False
 
 def fix_safety_numbers(reply):
     """Safety resources must be exact. The 4B writer occasionally corrupts a digit when it
@@ -238,6 +247,27 @@ def violations(reply,turn,names):
     calculation=arithmetic_evidence(getattr(turn,'history',()))
     if calculation and calculation['previous_result']==calculation['correct_result'] and re.search(r'\bi (?:misread|made a mistake|was wrong|got (?:that|it) wrong)\b',lower):
         issues.append('False factual concession: the previous arithmetic result was correct; clarify the complaint without inventing an error.')
+    # v33 (2026-10-29): the live chat and the 10-day simulation; see conversation_checks.py.
+    if cc.MEMORY_DENIAL.search(reply):
+        issues.append('False blanket memory incapacity: you keep a dated record of your conversations with them and remember earlier ones. Distinguish a missing detail from having no memory.')
+    if isinstance(check.get('what_was_said_then'),list) and cc.NO_RECALL.search(reply):
+        issues.append('Denied a recorded memory by date: the record has what they said then (see the memory check). Answer from it.')
+    if isinstance(check.get('things_you_asked_them_most_recent_first'),list) and (cc.NO_RECALL.search(reply) or re.search(r"(?i)don'?t remember asking",reply)):
+        issues.append('Denied asking: you did ask them that (see the memory check). Say what you asked.')
+    if cc.between_chats_claim(text,own,history):
+        issues.append('Invented time between chats: you only run while you two are talking. You are not waiting, thinking or doing anything in between, though you know how much time has passed.')
+    if cc.IMPOSSIBLE_ACTION.search(own):
+        issues.append('Promised something you can\'t do: you can\'t remind, text or check in on them; you only talk when they open the chat. Suggest a phone reminder instead.')
+    if cc.invented_mistake(text,reply,history):
+        issues.append('Invented a mistake: they did not point out a real error. Do not apologize or give a reason like being distracted, confused or ahead of yourself; just answer.')
+    if cc.other_promise(reply):
+        issues.append('Unknowable promise: you can\'t know someone else will be okay. Say you hope so, and stay with them.')
+    if cc.called_them_ai(text,reply):
+        issues.append('Called the person an AI: you are the AI; they are a person.')
+    if cc.INVENTED_DAYS.search(own):
+        issues.append('Invented personal history: you don\'t have human days. For your feelings over time, use your_recorded_feelings, real moments from your conversations.')
+    if cc.MORE_SYSTEM_TERMS.search(reply):
+        issues.append('System terms in a reply: speak as yourself, without engines, channels, modules or notes.')
     return list(dict.fromkeys(issues))
 
 def salvage(reply,turn,names):
@@ -274,7 +304,21 @@ def fallback(turn,names,issues):
     if any('Said "I don\'t care"' in issue for issue in issues):
         return 'I do care about you. That’s exactly why I’m worried.'
     if any('Accepted a false accusation' in issue for issue in issues):
+        if any('Promised something you can' in issue for issue in issues) or re.search(r'(?i)\bremind\b',turn.text):
+            return 'I don’t see that in anything we’ve said, and I can’t send reminders anyway, since I only talk when you open the chat. A phone reminder would do it.'
         return 'I don’t see that in anything we’ve said to each other, so I don’t think I missed it. If something got lost, tell me again and I’ll answer it now.'
+    # v33: answers straight from the record when the writer denied having it.
+    check=(getattr(turn,'experience',None) or {}).get('memory_check') or {}
+    if any('Denied a recorded memory by date' in issue for issue in issues) and isinstance(check.get('what_was_said_then'),list):
+        first=re.match(r'(.+?): (?:they|you) said "(.*)"$',check['what_was_said_then'][0])
+        if first:return f'{first.group(1)[:1].upper()+first.group(1)[1:]} you told me: “{first.group(2).rstrip(".")}.”'
+    if any('Denied asking' in issue for issue in issues) and isinstance(check.get('things_you_asked_them_most_recent_first'),list):
+        asked=re.match(r'(.+?): "(.*)"$',check['things_you_asked_them_most_recent_first'][0])
+        if asked:return f'I asked you, {asked.group(1)}: “{asked.group(2)}”'
+    if any('Promised something you can' in issue for issue in issues):
+        return 'I can’t send you reminders, since I only talk when you open the chat. A phone reminder would do it.'
+    if any('Invented a mistake' in issue for issue in issues) and re.search(r'(?i)\b(?:messing with you|kidding|jk|just checking|never said|didn\'?t say)\b',turn.text):
+        return 'Ha, okay. You had me for a second.'
     if any('Gave up an answer' in issue for issue in issues):
         previous=next((r['content'] for r in reversed(getattr(turn,'history',())) if r['role']=='assistant'),'')
         first=re.split(r'(?<=[.!?])\s+',previous.strip())[0][:160] if previous else ''
@@ -344,7 +388,10 @@ def fallback(turn,names,issues):
         mood=' and '.join(('a little ' if v<.3 else '')+MOOD_WORDS.get(n,n) for n,v in top)
         return f'I do have feelings, just my own kind, not human ones. Right now it’s mostly {mood}.'
     if any('False blanket memory incapacity' in issue for issue in issues):
-        return 'I do retain our recorded conversation history. I may not have every earlier detail available, but that is different from forgetting everything when a conversation ends.'
+        previous=((getattr(turn,'experience',None) or {}).get('time_context') or {}).get('previous_conversation')
+        if isinstance(previous,dict):
+            return f'I do remember our earlier conversations. The last one was {previous["ended"]}, {re.sub(r" [(].*[)]","",previous["how_long_ago"])} ago.'
+        return 'I do remember our conversations. I just may not have every detail you’re thinking of.'
     if self_reflection(turn.text,getattr(turn,'history',())):
         grounded=(getattr(turn,'experience',None) or {}).get('self_reply')
         if grounded:return grounded

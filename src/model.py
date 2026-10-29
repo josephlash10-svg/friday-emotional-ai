@@ -740,25 +740,58 @@ def self_test():
         assert torch.equal(restored.scars,agent.scars) and torch.equal(rs.fast,state.fast)
     print('V14 self-test passed: bounds, causal decoder, gradients, outcome learning, memory, checkpoint round-trip')
 
+def last_activity(agent):
+    """When Friday last talked with them: the newest stored exchange, or the start of this chat if that is newer."""
+    import time_sense
+    episodes=agent.experience.data['episodes'] if agent.cfg.experience_model else []
+    times=[getattr(agent,'conversation_started_at',None) or 0.]
+    if episodes:
+        try:times.append(time_sense.parse(episodes[-1]['time_utc']))
+        except (KeyError,ValueError,TypeError):pass
+    return max(times) or None
+
+def start_new_conversation_if_due(agent,now=None):
+    """After 3 hours of silence the saved chat history belongs to an earlier conversation. Kept as "this conversation" it
+    made Friday open with "hope the food was good" two days after a food run, and answer a two-day-old question
+    (10-day simulation, 2026-10-29). Earlier conversations stay in the stored record and its summaries, with dates."""
+    import time_sense
+    now=time.time() if now is None else now
+    last=last_activity(agent)
+    if last is not None and now-last>time_sense.NEW_CONVERSATION_GAP:
+        agent.chat_history=[];agent.conversation_started_at=now
+        return True
+    if getattr(agent,'conversation_started_at',None) is None:agent.conversation_started_at=now
+    return False
+
 def opening_facts(agent,state):
     """What Friday actually knows and feels at the moment the chat opens (for speaking first)."""
-    import calendar
+    import time_sense
     facts={}
+    now=time.time()
     if agent.cfg.experience_model:
-        data=agent.experience.data
+        experience=agent.experience;data=experience.data
         name=data['user'].get('name',{}).get('value')
         if name:facts['their_name']=name
         if data['relationship'].get('source')=='user_description':facts['how_they_describe_you_two']=data['relationship']['description'][:120]
         episodes=data['episodes']
         facts['earlier_exchanges_on_record']=len(episodes)
+        facts['right_now']=time_sense.now_words(now)
         if episodes:
             last=episodes[-1]
             try:
-                gap=time.time()-calendar.timegm(time.strptime(last['time_utc'],'%Y-%m-%dT%H:%M:%SZ'))
-                facts['time_since_you_last_talked']=('a few minutes' if gap<1800 else 'a few hours' if gap<6*3600 else 'about a day' if gap<36*3600
-                    else f'about {round(gap/86400)} days' if gap<14*86400 else 'a few weeks or more')
-            except (KeyError,ValueError,TypeError):pass
-            facts['the_last_thing_they_said_to_you']=last['input'][:160]
+                ended=time_sense.parse(last['time_utc'])
+                facts['time_since_you_last_talked']=time_sense.gap_words(now-ended)
+                facts['last_conversation_ended']=time_sense.when_words(ended,now)
+                fresh=now-ended<=time_sense.NEW_CONVERSATION_GAP
+            except (KeyError,ValueError,TypeError):fresh=False
+            if fresh:facts['the_last_thing_they_said_to_you']=last['input'][:160]
+            else:
+                earlier,_=experience.conversation_split(now)
+                if earlier:
+                    top=sorted(earlier[-1]['highlights'],key=lambda h:h['score'],reverse=True)[:3]
+                    facts['last_time_they_told_you_about']=[h['text'] for h in sorted(top,key=lambda h:h['time_utc'])]
+            events=experience.events_near(now,back=3,ahead=3)
+            if events:facts['their_events_around_now']=events
         else:facts['first_time_meeting']=True
     current=state.emotion
     if agent.cfg.developmental_emotion and getattr(agent,'state_updated_at',None):
@@ -859,6 +892,7 @@ def main(ui=None):
         print('External need levels are unmeasured until :levels. Verbal feedback learns automatically; :observe supplies measured outcomes.' if agent.cfg.experience_model else 'Need levels are unmeasured until :levels. Outcome learning requires :observe.')
     needs=agent.deficits([.5]*len(NEEDS)); measured=False; pending=None; last_turn=None; own_event=None
     trace=args.trace
+    if agent.cfg.experience_model:start_new_conversation_if_due(agent)
     if args.speak_first and native:
         # Friday opens the conversation from its actual memory and current mood.
         try:
@@ -932,6 +966,7 @@ def main(ui=None):
                 raise ValueError('Unknown or incomplete command. :levels, :event, and :observe require JSON arguments; :self shows shared experience.')
             pending=None
             prepared=None
+            if agent.cfg.experience_model:start_new_conversation_if_due(agent)  # the window was left open overnight
             elapsed=max(0.,time.time()-(agent.state_updated_at or time.time()))
             if native and agent.cfg.experience_model:
                 if agent.cfg.developmental_emotion:

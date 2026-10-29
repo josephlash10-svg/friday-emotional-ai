@@ -48,7 +48,7 @@ class CpuRuntimeTests(unittest.TestCase):
         self.assertEqual(''.join(pieces),reply)
         self.assertEqual(client.last_metrics['completion_tokens'],3)
         self.assertIsNotNone(client.last_metrics['first_text_seconds'])
-        with self.assertRaises(ValueError): client.respond(turn,'ANSWER',max_new=129)
+        with self.assertRaises(ValueError): client.respond(turn,'ANSWER',max_new=321)
 
     def test_natural_reply_sampler_values_are_accepted_by_the_server(self):
         # 2026-10-12: dry_penalty_last_n=-1 made llama-server answer 400 on every reply.
