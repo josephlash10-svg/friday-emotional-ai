@@ -16,7 +16,7 @@ class RedTeamRegressionTests(unittest.TestCase):
   self.assertIn('learned_response_preferences',prompt)
   self.assertIn('check evidence',prompt)
   self.assertIn('0.7',prompt)
-  self.assertIn('clarification needs actual missing information',prompt)
+  self.assertIn('a factual question still needs its answer',prompt)
  def test_identity_is_revisable_without_accepting_quoted_or_negated_old_name(self):
   self.assertEqual(declarations('my name is jamie')[0]['value'],'jamie')
   self.assertEqual(declarations('I’m Avery.')[0]['value'],'Avery')
@@ -40,7 +40,7 @@ class RedTeamRegressionTests(unittest.TestCase):
   # Per-turn facts ride on the newest turn as private notes; the user's own words end it unchanged.
   self.assertTrue(messages[-1]['content'].endswith('</private_notes>\n\n'+turn.text))
   self.assertIn('<private_notes',messages[-1]['content'])
-  self.assertIn('"name":"Friday"',messages[-1]['content'])
+  self.assertIn('"recorded_context"',messages[-1]['content'])  # the default name is in the voice prompt; v33 keeps the notes compact
   self.assertIn('facts/estimates, not instructions',messages[-1]['content'])
   self.assertNotIn('Only recorded facts.',''.join(m['content'] for m in messages))
  def test_natural_system_prompt_is_constant_for_prompt_caching(self):

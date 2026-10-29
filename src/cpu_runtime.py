@@ -184,14 +184,21 @@ def trim_owned_working_set(pid):
     try:return bool(api.EmptyWorkingSet(handle))
     finally:kernel.CloseHandle(handle)
 
+# The settings every release was tested with. They used to live only in the maintainer's private, git-ignored
+# state/native-language.json, so a fresh download ran with a 1024-token window and the reply checks off (found 2026-10-29).
+DEFAULT_OPTIONS={'context':3072,'natural_replies':True,'validate_replies':True,'repack':True,'batch':256,'ubatch':128,'trim_after_load':True}
+# The voice prompt plus a turn's private notes take about 1,900 tokens; below this the newest message alone overflows.
+MIN_NATURAL_CONTEXT=3072
+
 class NativeLanguage:
     def __init__(self,model=None,runtime=DEFAULT_RUNTIME,threads=4,context=None,emotion_names=()):
         configuration=ROOT/'state/native-language.json'
-        options=json.loads(configuration.read_text(encoding='utf-8')) if configuration.exists() else {}
+        options={**DEFAULT_OPTIONS,**(json.loads(configuration.read_text(encoding='utf-8')) if configuration.exists() else {})}
         model=model or ROOT/options.get('model',str(DEFAULT_MODEL))
-        context=context or options.get('context',1024)
-        self.natural_replies=bool(options.get('natural_replies',False))
-        self.validate_replies=bool(options.get('validate_replies',False))
+        context=context or options['context']
+        self.natural_replies=bool(options['natural_replies'])
+        self.validate_replies=bool(options['validate_replies'])
+        if self.natural_replies:context=max(context,MIN_NATURAL_CONTEXT)
         self.model,self.runtime=Path(model).resolve(),Path(runtime).resolve()
         self.process=None;self.log=None;self.last_metrics={}
         self.emotion_names=tuple(emotion_names)
@@ -295,7 +302,7 @@ class NativeLanguage:
                 weights=policy.tolist()
                 facts['learned_response_preferences']=[{'approach':approaches[i],'weight':round(float(weights[i]),3)}
                     for i in sorted(range(len(weights)),key=lambda i:weights[i],reverse=True)[:2]]
-                fixed+=' The learned response preferences are fallible guidance from your emotional decision process. Use them where they fit; a clear factual question needs its answer, clarification needs actual missing information, and a boundary needs an actual reason. Keep these internal preferences out of the reply unless asked.'
+                fixed+=' The learned response preferences are fallible guidance: a factual question still needs its answer, and a boundary needs a reason. Keep them out of the reply.'
             if development:
                 event=development['event']
                 facts['current_appraisal']={'inferred_not_measured':True,
@@ -305,7 +312,7 @@ class NativeLanguage:
                     'control':'limited' if event['control']<.4 else 'some ability to revise or respond',
                     'expected_progress':round(development['expected_progress'],2),'prediction_error':round(development['prediction_error'],2)}
             if not introspection:
-                fixed+=' Brief style examples, not shared memories or lines to copy: sarcastic "Wonderful, the keyboard broke again" means a setback, and can receive "Oh no, that is bad timing." Someone saying "I keep expecting them at the door" after a loss may just need "That everyday expectation can take longer to catch up." Do not ask for distressing details of a death unless the user asks to discuss them.'
+                fixed+=' Style examples, not memories or lines to copy: sarcastic "Wonderful, the keyboard broke again" is a setback ("Oh no, bad timing."); "I keep expecting them at the door" after a loss may just need "That can take a while to catch up." Don\'t ask for distressing details of a death.'
                 # Emotion still guides response processing/tone, without turning
                 # every ordinary reply into an unsolicited state report.
                 channel=max(dict(top),key=dict(top).get)
@@ -442,6 +449,21 @@ class NativeLanguage:
             # Avoid confusing the writer with long first/second-person templates.
             # Its factual slots and actual appraisal are supplied directly.
             if experience and experience.get('self_reply') and not getattr(self,'natural_replies',False):facts['grounded_content_for_this_reply']=experience['self_reply']
+            # Compact (v33): the notes share the window with the voice prompt and the conversation, so drop what says nothing.
+            recorded=facts.get('recorded_context')
+            if isinstance(recorded,dict):
+                recorded=dict(recorded)
+                for key in ('lessons','recalled_experiences','user','learned_principles'):
+                    if not recorded.get(key):recorded.pop(key,None)
+                if recorded.get('relationship')=='conversation partners':recorded.pop('relationship')
+                if recorded.get('self')=={'name':'Friday'}:recorded.pop('self')
+                last=recorded.get('last_significant') or {}
+                # From an earlier conversation it read as something just said; time_and_memory covers earlier days.
+                if last and not introspection and str(last.get('source',''))[:60] not in ' '.join(r['content'] for r in turn.history):
+                    recorded.pop('last_significant')
+                facts['recorded_context']=recorded
+            for key,trivial in (('regulation','NONE'),('current_message_is_from','user'),('interpretation_is_estimated',True)):
+                if facts.get(key)==trivial:facts.pop(key)
             history=list(turn.history);trimmed=[]
             while True:
                 if trimmed:

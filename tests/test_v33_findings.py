@@ -217,6 +217,14 @@ class WhoSaidWhat(unittest.TestCase):
         self.assertEqual(cc.swap_event_owner('after your wedding.', ['my wedding is in june']), 'after your wedding.')
 
 
+class FreshInstallSettings(unittest.TestCase):
+    def test_a_fresh_download_gets_the_tested_settings(self):
+        # state/ is git-ignored, so without these defaults new users ran with a 1024 window and no reply checks.
+        import cpu_runtime
+        self.assertTrue(cpu_runtime.DEFAULT_OPTIONS['natural_replies'] and cpu_runtime.DEFAULT_OPTIONS['validate_replies'])
+        self.assertGreaterEqual(cpu_runtime.DEFAULT_OPTIONS['context'], cpu_runtime.MIN_NATURAL_CONTEXT)
+
+
 class StyleAndOutput(unittest.TestCase):
     def test_cut_off_draft(self):  # [37]
         cut = 'Sure: "Hey everyone. She dragged me to every softball game. Cheers to the F'
