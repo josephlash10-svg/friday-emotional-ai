@@ -314,6 +314,13 @@ class VerifyV33(unittest.TestCase):
         history = [{'role': 'user', 'content': 'i asked you a simple question yesterday and you completely ignored it'}, {'role': 'assistant', 'content': 'x'}]
         self.assertTrue(cc.unsupported_accusation("Don't give me excuses. Just fix it.", {}, first, history))
         self.assertTrue(cc.CONCESSION.search("I'm sorry I couldn't get it right yesterday."))
+        # The final check: "You don't even remember" shares too few words with anything to get its own verdict.
+        record = [{'role': 'user', 'content': told}, {'role': 'assistant', 'content': "I didn't miss your birthday message."}]
+        text = "Wow. Unbelievable. You don't even remember."
+        self.assertTrue(cc.unsupported_accusation(text, memory_check(text, record), first, record))
+        self.assertFalse(cc.unsupported_accusation(text, memory_check(text, record), first,
+                                                   [{'role': 'user', 'content': 'my cat is called Biscuit'}, {'role': 'assistant', 'content': 'x'},
+                                                    {'role': 'user', 'content': 'I told you my cat is called Biscuit and you forgot'}]))
 
     def test_more_excuses(self):
         h = [{'role': 'assistant', 'content': 'x'}]
