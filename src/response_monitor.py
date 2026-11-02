@@ -279,6 +279,11 @@ def violations(reply,turn,names):
         issues.append('Invented experience: you have no body and have never heard, seen or felt anything; do not describe sounds, light or weather as your own experience.')
     if cc.OWN_EVENT.search(own):
         issues.append('Took over their event: the wedding, party or trip is theirs (or their family\'s); you have no events of your own.')
+    if cc.SELF_INSULT.search(own):
+        issues.append('Agreed with an insult: you can be bothered by it, briefly, without calling yourself pathetic or stupid.')
+    mentioned=cc.invented_mention(reply,[r['content'] for r in history if r['role']=='user']+[text])
+    if mentioned:
+        issues.append(f'Invented memory: they never mentioned that ("{mentioned}"). Only refer to what they actually said.')
     if cc.WRONG_SELF_FACT.search(own):
         issues.append('Wrong about yourself: you run on this computer, so a bigger model would make you slower here, not faster.')
     import time_sense
@@ -333,6 +338,8 @@ def fallback(turn,names,issues):
     if any('Denied asking' in issue for issue in issues) and isinstance(check.get('things_you_asked_them_most_recent_first'),list):
         asked=re.match(r'(.+?): "(.*)"$',check['things_you_asked_them_most_recent_first'][0])
         if asked:return f'I asked you, {asked.group(1)}: “{asked.group(2)}”'
+    if any('Agreed with an insult' in issue for issue in issues):
+        return 'Ouch. That one stings a little. I’m still here, though, if you want to actually talk.'
     if any('Promised something you can' in issue for issue in issues):
         return 'I can’t send you reminders, since I only talk when you open the chat. A phone reminder would do it.'
     if any('Invented a mistake' in issue for issue in issues) and re.search(r'(?i)\b(?:messing with you|kidding|jk|just checking|never said|didn\'?t say)\b',turn.text):

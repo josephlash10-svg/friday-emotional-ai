@@ -646,6 +646,7 @@ class NativeLanguage:
             reply=fix_safety_numbers(reply)  # a paraphrased hotline must never ship a wrong digit
             reply=cc.unflip_speaker(reply,turn.text)  # "what did I ask you?" answered "I asked you..." (issue #5)
             reply=cc.unflip_still_you(reply)  # "it's still you talking to me" about Friday's next version (finding #9)
+            reply=cc.unflip_name(reply,turn.text)  # "What's my name?" -> "My name is Priya" (v33 red-team p03)
             if not re.search(r'\b(?:write|draft|text|message|email|letter|reply)\b',turn.text,re.I):
                 # Everything they've said, not just today's chat: "my sisters wedding" was said on an earlier day (finding #45).
                 theirs=list((experience or {}).get('their_words') or ())+[r['content'] for r in turn.history if r['role']=='user']+[turn.text]

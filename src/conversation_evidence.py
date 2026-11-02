@@ -192,7 +192,9 @@ def memory_check(text, history, earlier_conversations=0, experience=None, now=No
                                  'earlier conversations; never say you don\'t.' if earlier else 'This is your first conversation with them; there is no earlier one.')
         return result
     # A claim to verify ("yesterday you told me you hated me") goes to the word-for-word check below, not a listing.
-    claim = ABOUT_FRIDAY.search(text) and words
+    # So does "I told you my birthday was today": the v33 red-team listed today's messages for it, skipped the
+    # accusation check, and Friday apologized for missing a birthday it was never told about (n33, a #3 regression).
+    claim = (ABOUT_FRIDAY.search(text) and words) or re.search(r"(?i)(?<!\w)i (?:told|said|mentioned|asked)(?: to)? you\b", clean) or ASKED_IF_TOLD.search(text)
     timed = experience is not None or any(r.get('time_utc') for r in turns)
     span = time_sense.time_range(clean, now) if timed and not claim and (RECALL.search(text) or overview or asked_friday) else None
     if span:
