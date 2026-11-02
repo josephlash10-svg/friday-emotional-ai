@@ -146,9 +146,9 @@ class ExperienceModel:
         rows=[]
         for event in sorted(near,key=lambda e:e['date']):
             row=time_sense.event_status(event,now)
-            told=self._told_about(event)
-            # Without this, Friday asked "how did the concert go?" on three days running (v33 rerun, 2026-10-29).
-            if told:row['they_already_told_you_how_it_went']=time_sense.when_words(told,now)
+            # Without this, Friday asked "how did the concert go?" on three days running, and a flag on the event wasn't
+            # enough (third rerun): once they've told you how it went, the event is done and isn't listed.
+            if self._told_about(event):continue
             rows.append(row)
         return rows
 

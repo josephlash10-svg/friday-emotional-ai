@@ -273,6 +273,12 @@ def violations(reply,turn,names):
         issues.append('Invented personal history: you don\'t have human days. For your feelings over time, use your_recorded_feelings, real moments from your conversations.')
     if cc.MORE_SYSTEM_TERMS.search(reply):
         issues.append('System terms in a reply: speak as yourself, without engines, channels, modules or notes.')
+    if check.get('they_did_tell_you')=='no matching message in the record' and cc.AFFIRMED_MEMORY.search(reply):
+        issues.append('Invented memory: nothing like that is in anything they told you. Say you don\'t have that, simply.')
+    if cc.MORE_SENSES.search(own):
+        issues.append('Invented experience: you have no body and have never heard, seen or felt anything; do not describe sounds, light or weather as your own experience.')
+    if cc.OWN_EVENT.search(own):
+        issues.append('Took over their event: the wedding, party or trip is theirs (or their family\'s); you have no events of your own.')
     if cc.WRONG_SELF_FACT.search(own):
         issues.append('Wrong about yourself: you run on this computer, so a bigger model would make you slower here, not faster.')
     import time_sense
@@ -358,6 +364,8 @@ def fallback(turn,names,issues):
         if isinstance(told,str) and told and told!='no matching message in the record':
             return 'Yes, you did — you told me: “'+told.rstrip('.')+'.”'
         return 'Yes, you did mention that to me.'
+    if any('Invented memory: nothing like that' in issue for issue in issues):
+        return 'I don’t have that in anything you’ve told me. What happened?'
     if any('Invented memory' in issue or 'False memory weakness' in issue for issue in issues):
         check=(getattr(turn,'experience',None) or {}).get('memory_check') or {}
         said=check.get('what_they_have_actually_told_you_oldest_first') or told_in_conversations(check)

@@ -220,7 +220,7 @@ def contradicts_prior_claim(text, history=()):
 
 # --- Simple arithmetic is computed, not trusted to the writer ("what's 17 times 3?" -> "42.") ---
 ASKED_SUM = re.compile(r"(?i)(?<!\w)(-?\d{1,6})\s*(plus|minus|times|multiplied by|divided by|\+|\-|\*|x|/)\s*(-?\d{1,6})(?!\w)")
-SUM_QUESTION = re.compile(r"(?i)\?|what(?:'s| is)|how much|calculate|equals?\b")
+SUM_QUESTION = re.compile(r"(?i)\?|what(?:'?s| is)|how much|calculate|equals?\b")  # "whats 17 times 23" got "371." (v33 rerun)
 
 def asked_arithmetic(text):
     """(expression, exact integer result) when the newest message asks a simple sum, else None."""
@@ -458,6 +458,16 @@ def swap_event_owner(reply, user_texts):
             continue
         reply = re.sub(r"(?<!\w)([Yy]our) (" + re.escape(event) + r")(?!\w)", lambda m: f"{m.group(1)} {owner}'s {m.group(2)}", reply)
     return reply
+
+# --- Saying yes to a memory the record doesn't have ("remember my dog getting out?" -> "Yeah, I remember that") --------
+AFFIRMED_MEMORY = re.compile(r"(?i)^\W*(?:yeah|yes|yep|yup|of course|oh yeah|i do)\b[^.!?]{0,25}\bremember\b|(?<!\w)i (?:do )?remember (?:that|it|when you|you telling)(?!\w)")
+
+# --- Things it can't sense ("There's a little bird outside that's been singing all afternoon", v33 rerun) -------------
+MORE_SENSES = re.compile(r"(?i)(?:there(?:'s| is) a (?:little |small )?\w+ outside|outside (?:my|the) window|(?:been|is|keeps?) (?:singing|barking|chirping|raining|snowing|buzzing) (?:all|outside|out there)|"
+                         r"the noise gets (?:too )?loud|(?:want|like|need) to (?:just )?sit in the (?:quiet|silence|dark))")
+
+# --- Taking over their event ("I've got a wedding coming up in three days", the Day 5 opening) --------------------------
+OWN_EVENT = re.compile(r"(?i)(?<!\w)(?:i(?:'ve| have)? got|i have|i'?m having) (?:a|my|the) (?:big )?" + EVENTS + r"(?!\w)|(?<!\w)my (?:own )?" + EVENTS + r"(?!\w)")
 
 # --- Openers and closers on repeat ("Honestly," [4]; "You've got this." four times running [41]) ----------------------
 def _opener(reply):

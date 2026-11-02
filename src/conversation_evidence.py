@@ -144,6 +144,7 @@ STOP = set('''a an the and or but if then so to of in on at for with from by abo
 have has had having i me my mine you your yours we us our it its this that these those there here what when where who why how which
 not no yes just really very actually definitely literally also too again ever never still yet already remember recall told tell said say
 mention mentioned yesterday last week time earlier before like ok okay hey hi oh well can could would should will shall may might must
+get getting got going gone went come came coming make made take took back out up down off thing things stuff gonna wanna lol im dont
 something anything everything nothing real us from me'''.split())
 
 def content_words(text):
@@ -249,7 +250,10 @@ def memory_check(text, history, earlier_conversations=0, experience=None, now=No
             if r['role'] != role:
                 continue
             overlap = words & content_words(r['content'])
-            if overlap:
+            # What they told you must match a third of what they ask about, and filler verbs no longer count: "remember when
+            # i told you about my dog getting out?" matched an unrelated message on "getting" and got "Yeah, I remember that".
+            needed = max(1, (len(words) + 2) // 3) if role == 'user' else 1
+            if len(overlap) >= needed:
                 scored.append((len(overlap), i, r['content']))
         top = max(scored, default=(0, -1, None))
         if top[0] and turns[top[1]].get('time_utc'):

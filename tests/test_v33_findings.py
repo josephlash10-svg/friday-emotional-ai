@@ -97,10 +97,25 @@ class MemoryOverTime(unittest.TestCase):
         self.assertEqual(ExperienceModel.capacity, 400)
 
     def test_events_already_talked_about(self):  # rerun: "how did the concert go?" on three days running
+        model = memory([('fair. anyway concert is tomorrow night', 28)])
+        self.assertEqual(model.events_near(now=at(60))[0]['status'], 'already happened')  # Sunday morning: ask how it went
         model = memory([('fair. anyway concert is tomorrow night', 28), ('yeah the concert. it was unreal', 70.5)])
-        event = model.events_near(now=at(103.5))[0]
-        self.assertEqual(event['status'], 'already happened')
-        self.assertIn('they_already_told_you_how_it_went', event)
+        self.assertEqual(model.events_near(now=at(103.5)), [])  # they told you on Sunday: it's done
+
+    def test_dog_that_was_never_mentioned(self):  # third rerun: "Yeah, I remember that. It was a relief when you got it back"
+        record = [{'role': 'user', 'content': 'im getting out of class early today'}, {'role': 'user', 'content': 'the board is done'}]
+        check = memory_check('remember when i told you about my dog getting out?', record)
+        self.assertEqual(check['they_did_tell_you'], 'no matching message in the record')
+        found = issues('Yeah, I remember that. It was a relief when you got it back.', turn('remember when i told you about my dog getting out?', check=check))
+        self.assertTrue(any('Invented memory: nothing like that' in i for i in found))
+
+    def test_whats_without_apostrophe(self):  # third rerun: "whats 17 times 23" -> "371."
+        self.assertEqual(cc.wrong_arithmetic('371.', 'whats 17 times 23'), ('17 times 23', 391))
+
+    def test_senses_and_their_events(self):  # third rerun
+        self.assertTrue(cc.MORE_SENSES.search("There's a little bird outside that's been singing all afternoon."))
+        self.assertTrue(cc.OWN_EVENT.search("I've got a wedding coming up in three days that I can't wait to hear about."))
+        self.assertFalse(cc.OWN_EVENT.search("Your sister's wedding is in three days."))
 
     def test_profile_is_backfilled_from_old_memories(self):  # [14] the job said before the "Im" fix was never saved
         model = memory([('Good. Anyway I dont think I ever told you what I do. Im a teaching assistant at Westbrook, biology', 0)])

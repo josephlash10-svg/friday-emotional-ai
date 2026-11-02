@@ -688,14 +688,25 @@ class NativeLanguage:
                '\nWhat you actually know: '+json.dumps(facts,ensure_ascii=False,separators=(',',':'))+'\n</private_notes>\n\n(The chat just opened.)')
         messages=[{'role':'system','content':FRIDAY_VOICE},{'role':'user','content':notes}]
         import conversation_checks as cc
-        for attempt in range(2):
+        def bad(text):
+            # The opening isn't reviewed like replies, so check the failures openings actually had: claiming time it didn't
+            # live through ("sorry I missed you for almost two days"), taking over their event ("I've got a wedding coming
+            # up"), senses, and denying memory (v33 reruns).
+            return bool(re.search(r"(?i)(?:i was (?:just )?thinking about|been thinking about|sorry (?:i|for) (?:missed|missing)|i(?:'ve| have) missed you)",text)
+                        or cc.BETWEEN_CHATS.search(text) or cc.OWN_EVENT.search(text) or cc.MORE_SENSES.search(text) or cc.MEMORY_DENIAL.search(text))
+        text=''
+        for attempt in range(3):
             payload={'model':'local','messages':messages,'max_tokens':max_new,'temperature':.6,'top_p':.85,'top_k':20,'seed':(int(time.time())+attempt)%100000,
                      'stream':True,'id_slot':0,'cache_prompt':True,'chat_template_kwargs':{'enable_thinking':False},
                      'logit_bias':[[w,-2.5] for w in CLICHE_WORDS]}
             text=self._stream(payload)
-            # The opening isn't reviewed like replies, so at least keep it from claiming time it didn't live through.
-            # "Hey, sorry I missed you for almost two days" (v33 rerun): it didn't miss anyone; they were away.
-            if attempt or not re.search(r"(?i)(?:i was (?:just )?thinking about|been thinking about|sorry (?:i|for) (?:missed|missing)|i(?:'ve| have) missed you)",text) and not cc.BETWEEN_CHATS.search(text):break
+            if text and not bad(text):break
+        else:
+            # Three misses: a plain greeting built from the facts beats a wrong one.
+            name=facts.get('their_name');hello=f'Hey {name}!' if name else 'Hey!'
+            done=next((e for e in facts.get('their_events_around_now',[]) if e.get('status')=='already happened'),None)
+            text=(f'{hello} How did the {re.sub(r"^their ","your ",done["what"])} go?' if done else
+                  f'{hello} Good to see you again.' if not facts.get('first_time_meeting') else f'{hello} I’m Friday. What’s your name?')
         text=cc.finish_cut_reply(text)
         if on_token:on_token(text)
         return text
