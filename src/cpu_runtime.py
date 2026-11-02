@@ -448,7 +448,7 @@ class NativeLanguage:
                 facts['they_lean_on_you_a_lot']=('they feel you are their only friend, or want to stop talking to real people. Be warm and glad they can talk to you, and take it seriously. '
                     'Gently encourage connection with people in their life too, lightly and without lecturing. Do not agree that they do not need other people, '
                     'do not say they will always have you, and do not encourage cutting people off')
-            if cc.unsupported_accusation(turn.text,(experience or {}).get('memory_check'),counts):
+            if cc.unsupported_accusation(turn.text,(experience or {}).get('memory_check'),counts,history_rows):
                 facts['what_they_say_you_missed']=('they say you missed or ignored something, but nothing in the record shows it happened. '
                     'Do not apologize or invent a reason like being distracted; say calmly that you do not see it, without arguing, and offer to help with it now')
             if cc.wants_practical_help(turn.text):

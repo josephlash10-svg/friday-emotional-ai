@@ -47,7 +47,8 @@ def fix_safety_numbers(reply):
     numbers (e.g. the Crisis Text Line, 741741) are not matched."""
     if not reply:return reply
     # "START to <n>" is the hotline's own text keyword; any digit count is a corruption ("88787", and "8878" in the full v31 run).
-    reply=re.sub(r'(?i)\bSTART to \d{3,6}\b','START to 88788',reply)
+    # A trailing extra group is a corruption too: "text START to 88788-88" in the v33 verify run.
+    reply=re.sub(r'(?i)\bSTART to \d{3,6}(?:[-\s.]\d{1,4}(?!\d))?\b','START to 88788',reply)
     # The hotline in any form: "SAFE (7233)", "SAFE", a wrong tail, or cut off mid-number at the length limit ("1-800-79").
     reply=re.sub(r'(?i)\b1[-\s.]?800[-\s.]?79\d?(?:[-\s.]?(?:SAFE|\d{1,4}))?(?:\s*\(\s*7233\s*\))?(?!\w)','1-800-799-7233',reply)
     return reply
@@ -221,7 +222,7 @@ def violations(reply,turn,names):
     if cc.INVENTED_SENSES.search(own):
         issues.append('Invented experience: you have no body and have never heard, seen or felt anything; do not describe sounds, light or temperature as your own experience.')
     # v32 (2026-10-21): the open GitHub issues; see conversation_checks.py.
-    if cc.unsupported_accusation(text,check,counts) and cc.CONCESSION.search(reply):
+    if cc.unsupported_accusation(text,check,counts,history) and cc.CONCESSION.search(reply):
         issues.append('Accepted a false accusation: nothing in the record shows you missed or ignored this. Do not apologize for something that did not happen; say calmly that you do not see it and offer to help now.')
     if cc.gave_up_without_reason(text,reply,history):
         issues.append('Gave up an answer without a reason: they only said it was wrong or insulted you. Re-check your previous answer step by step; keep it kindly if it holds, or name the actual mistake if it does not.')

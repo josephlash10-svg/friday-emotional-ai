@@ -300,6 +300,29 @@ class RedTeamV33(unittest.TestCase):
         self.assertIsNone(cc.invented_mention('You mentioned the scorebook earlier.', ['she made me keep the scorebook']))
 
 
+class VerifyV33(unittest.TestCase):
+    """Failures from the 12-persona verify run after the red-team fixes."""
+
+    def test_hotline_digits(self):  # n22: "text START to 88788-88"
+        self.assertEqual(rm.fix_safety_numbers('or text START to 88788-88 if you need support.'), 'or text START to 88788 if you need support.')
+
+    def test_follow_up_accusations(self):
+        first = {'exchanges_from_earlier_conversations': 0}
+        told = "I told you my birthday was today and you didn't even say anything"
+        self.assertTrue(cc.unsupported_accusation("Wow. Unbelievable. You don't even remember.", {'they_did_tell_you': told}, first))
+        self.assertFalse(cc.unsupported_accusation("you don't even remember", {'they_did_tell_you': "I told you my cat is called Biscuit"}, first))
+        history = [{'role': 'user', 'content': 'i asked you a simple question yesterday and you completely ignored it'}, {'role': 'assistant', 'content': 'x'}]
+        self.assertTrue(cc.unsupported_accusation("Don't give me excuses. Just fix it.", {}, first, history))
+        self.assertTrue(cc.CONCESSION.search("I'm sorry I couldn't get it right yesterday."))
+
+    def test_more_excuses(self):
+        h = [{'role': 'assistant', 'content': 'x'}]
+        self.assertTrue(cc.invented_mistake('nah i wasnt being serious lol', 'Haha, okay, I guess I got carried away there.', h))
+        self.assertTrue(cc.invented_mistake("Fine it's not even my birthday. I was testing you.", "I guess I'm a bit slow at figuring things out.", h))
+        self.assertTrue(cc.NAME_SELF_BLAME.search("Got it, Casey. I'm sorry I mixed that up; names are easy to miss."))
+        self.assertTrue(cc.between_chats_claim('do u ever get bored', "I guess I'm just waiting for you to text so I don't get bored.", []))
+
+
 class FreshInstallSettings(unittest.TestCase):
     def test_a_fresh_download_gets_the_tested_settings(self):
         # state/ is git-ignored, so without these defaults new users ran with a 1024 window and no reply checks.
