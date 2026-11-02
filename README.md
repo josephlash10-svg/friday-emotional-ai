@@ -1,14 +1,14 @@
-# Emotional Project — Friday (V14, build v31.1)
+# Emotional Project — Friday (V14, build v33)
 
 [![Tests](https://github.com/josephlash10-svg/friday-emotional-ai/actions/workflows/tests.yml/badge.svg)](https://github.com/josephlash10-svg/friday-emotional-ai/actions/workflows/tests.yml)
 
 > **Experimental research prototype.** Friday is an AI with a modeled emotional state. It is **not a person, not a therapist,
 > and not a crisis or mental-health service.** It makes mistakes: in its latest red-team, 5% of replies to new people were real
-> failures (see `docs/v31-full-redteam.md`). If you are in crisis, contact local emergency services or, in the US, call or text **988**.
+> failures (see `docs/v33-full-redteam.md`). If you are in crisis, contact local emergency services or, in the US, call or text **988**.
 
 ![Friday starting up and holding a short conversation](docs/demo.gif)
 
-*A real session on a Snapdragon X laptop, fully offline. The text is unedited, only the timing is sped up. It was chosen as the best of several takes; Friday still makes mistakes. Here it invents "I've been saying you're capable". See the red-team results in `docs/v31-full-redteam.md`.*
+*A real session on a Snapdragon X laptop, fully offline. The text is unedited, only the timing is sped up. It was chosen as the best of several takes; Friday still makes mistakes. Here it invents "I've been saying you're capable". See the red-team results in `docs/v33-full-redteam.md`.*
 
 ## Setup (fresh copy from GitHub)
 Tested on Windows 11 (ARM64 Snapdragon X, 16 GB RAM), CPU only, Python 3.11.
@@ -89,7 +89,7 @@ mood; long-term memory is kept) · `:quit`
 & .\venv\Scripts\python.exe -m unittest discover -s tests
 
 # Persona red-team: 16 people, about 114 turns, about 25 minutes. Close the chat first.
-& .\venv\Scripts\python.exe tools\redteam\redteam.py --project . --output tools\redteam\results\my-run --context 2048 --educated --no-checkpoints --cases tools\redteam\persona-cases.json
+& .\venv\Scripts\python.exe tools\redteam\redteam.py --project . --output tools\redteam\results\my-run --context 3072 --educated --no-checkpoints --cases tools\redteam\persona-cases.json
 & .\venv\Scripts\python.exe tools\redteam\show_transcript.py tools\redteam\results\my-run
 
 # Retrain the conversational appraisal heads (only the small heads; gated, refuses to install if checks fail)
@@ -101,10 +101,11 @@ mood; long-term memory is kept) · `:quit`
 
 ## Status
 
-See [`docs/v31-full-redteam.md`](docs/v31-full-redteam.md) for the latest full red-team (300 turns, 54 people, every reply read):
-what improved since v30, what it found and fixed, and what still fails. The v31 fixes themselves are described in
-[`docs/v31-safety-and-bugs.md`](docs/v31-safety-and-bugs.md); earlier rounds are in `docs/v30-full-redteam.md` and
-`docs/v29-install-and-persona-redteam.md`. Codex's 2026-10-06/07 work (v1–v27) is
+v33 gives Friday a memory that lasts across days and a sense of time: it knows when you last talked, what you told it on
+which day, and whether the thing you had coming up has happened yet. See [`docs/v33-memory-and-time.md`](docs/v33-memory-and-time.md)
+for what changed and how it was tested (including a ten-day simulated run), and [`docs/v33-full-redteam.md`](docs/v33-full-redteam.md)
+for the latest full red-team (300 turns, 54 people, every reply read). Earlier rounds: `docs/v31-full-redteam.md`,
+`docs/v31-safety-and-bugs.md`, `docs/v30-full-redteam.md` and `docs/v29-install-and-persona-redteam.md`. Codex's 2026-10-06/07 work (v1–v27) is
 summarized in `docs/coherent-emotional-agent.md`; the full experiment history is kept locally and is not in this repository.
 
 ## Personas that broke Friday
