@@ -5,6 +5,7 @@
 Downloads, then verifies by SHA-256 where the exact file is known:
   * Qwen3.5-4B (Q4_K_M GGUF, unsloth conversion)   Apache-2.0  -> data/models/qwen3.5-4b-gguf/
   * SmolLM2-135M-Instruct (pinned revision)        Apache-2.0  -> data/models/smollm2-135m-instruct/
+  * all-MiniLM-L6-v2 (pinned revision, ~91 MB)     Apache-2.0  -> data/models/all-minilm-l6-v2/  (recall by meaning)
   * llama.cpp b11429 CPU build for Windows, Linux or macOS (x64 or ARM64)   MIT   -> runtime/llama-<arch>/
 Files already present and matching are skipped. See THIRD_PARTY_NOTICES.md for licenses.
 """
@@ -22,6 +23,8 @@ QWEN = dict(repo='unsloth/Qwen3.5-4B-GGUF', file='Qwen3.5-4B-Q4_K_M.gguf',
             sha256='00fe7986ff5f6b463e62455821146049db6f9313603938a70800d1fb69ef11a4', folder='data/models/qwen3.5-4b-gguf')
 SMOL = dict(repo='HuggingFaceTB/SmolLM2-135M-Instruct', revision='12fd25f77366fa6b3b4b768ec3050bf629380bac',
             weights_sha256='5af571cbf074e6d21a03528d2330792e532ca608f24ac70a143f6b369968ab8c', folder='data/models/smollm2-135m-instruct')
+MINILM = dict(repo='sentence-transformers/all-MiniLM-L6-v2', revision='1110a243fdf4706b3f48f1d95db1a4f5529b4d41',
+              weights_sha256='53aa51172d142c89d9012cce15ae4d6cc0ca6895895114379cacb4fab128d9db', folder='data/models/all-minilm-l6-v2')
 LLAMA_TAG = 'b11429'  # commit d81235049384534c167caea52b85a694f6103d14, the build Friday was tested with
 # The prebuilt CPU servers in that release, with the SHA-256 GitHub publishes for each file. They hold the
 # programs Friday runs, so an archive that doesn't match is never installed. Linux and macOS: issue #11.
@@ -69,6 +72,19 @@ def smol():
                           allow_patterns=['*.json', '*.txt', '*.md', 'model.safetensors'])
     check(weights, SMOL['weights_sha256'], 'SmolLM2-135M-Instruct')
 
+def minilm():
+    """The small sentence-embedding model Friday uses to recall memories by meaning (optional: without it, recall
+    falls back to matching words)."""
+    from huggingface_hub import snapshot_download
+    folder = ROOT / MINILM['folder']
+    weights = folder / 'model.safetensors'
+    if not (weights.exists() and sha256(weights) == MINILM['weights_sha256']):
+        print('Downloading all-MiniLM-L6-v2 (~91 MB)...')
+        snapshot_download(MINILM['repo'], revision=MINILM['revision'], local_dir=folder,
+                          allow_patterns=['config.json', 'tokenizer.json', 'tokenizer_config.json', 'special_tokens_map.json',
+                                          'vocab.txt', 'model.safetensors', 'README.md'])
+    check(weights, MINILM['weights_sha256'], 'all-MiniLM-L6-v2')
+
 def llama():
     sys.path.insert(0, str(ROOT / 'src'))
     from cpu_runtime import native_arch  # real CPU, even from an emulated x64 Python
@@ -108,5 +124,5 @@ def llama():
     print(f'  llama.cpp ({system} {arch}): installed to {folder.relative_to(ROOT)}')
 
 if __name__ == '__main__':
-    qwen(); smol(); llama()
+    qwen(); smol(); minilm(); llama()
     print('Done. Start Friday with RUN.bat on Windows or ./run.sh on Linux and macOS.')

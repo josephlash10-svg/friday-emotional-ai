@@ -17,8 +17,21 @@ def interpret_turn(agent,native,text):
                          valence=0.,summary=profile['evidence'],_profile_parse=profile)
     return frame
 
-def prepare_experience(agent,state,text,frame,needs,measured=False):
-    prepared=agent.experience.prepare(text,frame)
+def start_recall(agent,text):
+    """Begin embedding the message for recall by meaning (M1) on a worker thread, before the language model is asked
+    to interpret it; prepare_experience picks the vector up. None when recall by meaning is off."""
+    experience=getattr(agent,'experience',None)
+    if not getattr(experience,'meaning_enabled',False):return None
+    return experience.meaning.embed_later(experience.expand_for_recall(text))
+
+def prepare_experience(agent,state,text,frame,needs,measured=False,recall=None):
+    query_vector=None
+    if recall is not None:
+        query_vector=recall.result()  # normally done long ago: the interpretation call takes seconds, the embedding ~10 ms
+    elif getattr(agent.experience,'meaning_enabled',False):
+        vector=agent.experience.meaning.embed([agent.experience.expand_for_recall(text)])
+        query_vector=None if vector is None else vector[0]
+    prepared=agent.experience.prepare(text,frame,query_vector)
     if frame.get('_profile_parse'):prepared['profile_parse']=frame['_profile_parse']
     feedback=prepared['feedback']
     if feedback:

@@ -68,7 +68,7 @@ def main():
  (args.output/'cases.json').write_text(json.dumps(cases,indent=2),encoding='utf-8')
  try:
   for case,turns,expected_terms in cases:
-   agent.development.load_state_dict(development);agent.experience=ExperienceModel();agent.chat_history=[]
+   agent.development.load_state_dict(development);agent.experience=ExperienceModel();agent.experience.enable_meaning();agent.chat_history=[]  # recall by meaning (M1), as shipped
    if args.educated and education:agent.experience.data['education']=copy.deepcopy(education)
    state=agent.initial_state();needs=agent.deficits([.5]*7)
    for index,(text,expected_kind) in enumerate(turns):

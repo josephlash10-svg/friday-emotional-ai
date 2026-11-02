@@ -470,7 +470,7 @@ class NativeLanguage:
             recorded=facts.get('recorded_context')
             if isinstance(recorded,dict):
                 recorded=dict(recorded)
-                for key in ('lessons','recalled_experiences','user','learned_principles'):
+                for key in ('lessons','recalled_experiences','user','learned_principles','people_they_mentioned'):
                     if not recorded.get(key):recorded.pop(key,None)
                 if recorded.get('relationship')=='conversation partners':recorded.pop('relationship')
                 if recorded.get('self')=={'name':'Friday'}:recorded.pop('self')

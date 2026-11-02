@@ -18,7 +18,7 @@ import time
 from self_awareness import reflect
 from developmental_emotion import DevelopmentalEmotion,OwnEvent
 from experience_model import ExperienceModel
-from experience_loop import prepare_experience,complete_experience,explain_experience,interpret_turn
+from experience_loop import prepare_experience,complete_experience,explain_experience,interpret_turn,start_recall
 from semantic_interpreter import SemanticInterpreter
 from typing import Callable
 import torch
@@ -892,7 +892,9 @@ def main(ui=None):
         print('External need levels are unmeasured until :levels. Verbal feedback learns automatically; :observe supplies measured outcomes.' if agent.cfg.experience_model else 'Need levels are unmeasured until :levels. Outcome learning requires :observe.')
     needs=agent.deficits([.5]*len(NEEDS)); measured=False; pending=None; last_turn=None; own_event=None
     trace=args.trace
-    if agent.cfg.experience_model:start_new_conversation_if_due(agent)
+    if agent.cfg.experience_model:
+        start_new_conversation_if_due(agent)
+        if native:agent.experience.enable_meaning()  # recall by meaning (M1); loads in the background, falls back to words
     if args.speak_first and native:
         # Friday opens the conversation from its actual memory and current mood.
         try:
@@ -976,8 +978,9 @@ def main(ui=None):
                 if agent.cfg.developmental_emotion:
                     state=replace(state,emotion=agent.development.recovered_emotion(state.emotion,elapsed))
                     agent.state_updated_at=time.time()
+                recall=start_recall(agent,text)  # embeds on a worker thread while the language model interprets the message
                 frame=interpret_turn(agent,native,text)
-                state,needs,prepared=prepare_experience(agent,state,text,frame,needs,measured)
+                state,needs,prepared=prepare_experience(agent,state,text,frame,needs,measured,recall)
             with torch.no_grad():
                 ids=torch.tensor(agent.vocab.encode(text)[-agent.cfg.max_tokens:])
                 elapsed=max(0.,time.time()-(agent.state_updated_at or time.time())) if hasattr(agent,'state_updated_at') else 0.

@@ -8,6 +8,7 @@ import copy
 import datetime
 import math
 import re
+import threading
 import time
 from dataclasses import replace
 from developmental_emotion import OwnEvent
@@ -62,6 +63,11 @@ class ExperienceModel:
                 raise ValueError('Experience memory exceeds capacity')
             self.data=copy.deepcopy(snapshot)
             if 'conversations' not in self.data:self._backfill()
+            if 'people' not in self.data:
+                self.data['people']={}
+                for episode in self.data['episodes']:
+                    try:self._note_people(episode['input'],time_sense.parse(episode['time_utc']))
+                    except (KeyError,ValueError,TypeError):pass
 
     def snapshot(self): return copy.deepcopy(self.data)
 
@@ -191,12 +197,137 @@ class ExperienceModel:
         evidence+=sum(min(12.,float(v)) for v in education.get('domain_exposures',{}).values())
         return 1-math.exp(-evidence/20)
 
-    def retrieve(self,text,limit=2):
+    # --- Recall by meaning and the people they mention (M1) ------------------------------------------------------------
+    meaning_enabled=False  # turned on by enable_meaning() in the chat and the red-team; tests keep word-overlap recall
+    _pending_vectors=None
+
+    SMALL_TALK_WORDS=set("good morning night evening afternoon bored ugh mondays monday same sounds cool nice thanks thank bye later "
+                         "sup whats what's there ready tired great fine awesome yeah yep nope sure idk lmao haha omg wow i'm i've it's "
+                         "that's you're up".split())
+
+    @staticmethod
+    def _worth_indexing(text,minimum=3):
+        # Small talk isn't a memory worth recalling, and indexing it pulled "lol ok" toward every short question.
+        return len(content_words(text))>=minimum
+
+    def enable_meaning(self,meaning_index=None):
+        """Recall stored exchanges by meaning. Exchanges saved without a vector are embedded on a background thread and
+        merged in on the next turn, so neither the start nor the first reply waits for them."""
+        import os
+        import meaning_recall
+        if os.environ.get('FRIDAY_MEANING','').lower()=='off':return False  # A/B timing, or to rule it out when debugging
+        self.meaning=meaning_index or meaning_recall.index()
+        if not self.meaning.available:return False
+        self.meaning_enabled=True
+        store=self.data.get('meaning')
+        if not store or store.get('model')!=meaning_recall.MODEL_TAG:
+            store=self.data['meaning']={'model':meaning_recall.MODEL_TAG,'ids':[],'vectors':None}
+        known=set(store['ids'])
+        missing=[(e['id'],e['input']) for e in self.data['episodes'] if e['id'] not in known and self._worth_indexing(e['input'])]
+        if missing:
+            def work():
+                vectors=self.meaning.embed([t for _,t in missing])
+                if vectors is not None:self._pending_vectors=([i for i,_ in missing],vectors)
+            threading.Thread(target=work,name='meaning-backfill',daemon=True).start()
+        return True
+
+    def _add_vectors(self,ids,vectors):
+        import torch
+        store=self.data['meaning']
+        vectors=vectors.to(torch.float16)
+        store['vectors']=vectors if store['vectors'] is None else torch.cat([store['vectors'],vectors])
+        store['ids']=store['ids']+list(ids)
+
+    def _sync_vectors(self):
+        """Merge a finished background backfill, and drop vectors whose exchanges were dropped. Main thread only."""
+        pending,self._pending_vectors=self._pending_vectors,None
+        store=self.data.get('meaning')
+        if not store:return
+        if pending:
+            have=set(store['ids']);fresh=[k for k,i in enumerate(pending[0]) if i not in have]
+            if fresh:self._add_vectors([pending[0][k] for k in fresh],pending[1][fresh])
+        alive={e['id'] for e in self.data['episodes']}
+        if store['ids'] and any(i not in alive for i in store['ids']):
+            keep=[k for k,i in enumerate(store['ids']) if i in alive]
+            store['vectors']=store['vectors'][keep] if keep else None
+            store['ids']=[store['ids'][k] for k in keep]
+
+    PEOPLE_RELATIONS=('brother','sister','mom','mum','mother','dad','father','son','daughter','grandson','granddaughter','grandma',
+                      'grandmother','grandpa','grandfather','husband','wife','boyfriend','girlfriend','fiance','fiancé','fiancee',
+                      'partner','aunt','uncle','cousin','niece','nephew','boss','manager','coworker','roommate','neighbor',
+                      'best friend','friend','buddy','therapist','teacher','professor','dog','cat')
+    NOT_NAMES=set('I Im The He She It They We You This That There Is Was Has Had And But So Just Really Actually Today Tomorrow Monday '
+                  'Tuesday Wednesday Thursday Friday Saturday Sunday January February March April May June July August September '
+                  'October November December God Mr Mrs Ms Dr'.split())
+
+    def _note_people(self,text,said=None):
+        """Who is who, from their own words only: "my sister Anna", "Anna, my sister", "my dog is called Max". Each fact
+        keeps the words it came from. Lets a question about "my sister" find a message about Anna (M1)."""
+        if re.search(r'(?i)\b(?:pretend|imagine|role.?play|fiction|character)\b',text):return
+        clean=text.replace('’',"'")
+        relation=r'(?P<rel>'+'|'.join(sorted(map(re.escape,self.PEOPLE_RELATIONS),key=len,reverse=True))+r')'
+        name=r'(?P<name>[A-Z][a-z]{1,15})'
+        patterns=(r'(?i:\bmy (?:little |big |older |younger |best |new )?'+relation+r')(?:,|\s)\s*(?i:(?:is |was )?(?:named |called ))?'+name+r'\b',
+                  r'\b'+name+r',? (?i:(?:is|was) )?(?i:my (?:little |big |older |younger |best )?'+relation+r')\b',
+                  r'(?i:\bmy '+relation+r"(?:'s name is| is named| is called| named| called)) (?P<name>[A-Za-z]{2,15})\b")
+        people=self.data.setdefault('people',{})
+        for pattern in patterns:
+            for m in re.finditer(pattern,clean):
+                who=m.group('name');who=who[:1].upper()+who[1:]
+                if who in self.NOT_NAMES or who.lower() in self.PEOPLE_RELATIONS:continue
+                people[who.lower()]={'name':who,'relation':m.group('rel').lower(),'evidence':m.group(0)[:120],
+                                     'time_utc':time_sense.stamp(said)}
+        if len(people)>60:
+            for key in sorted(people,key=lambda k:people[k]['time_utc'])[:len(people)-60]:people.pop(key)
+
+    def expand_for_recall(self,text):
+        """Add who's who to a recall query: "how's my sister doing" also looks for Anna, and "Anna" for "sister"."""
+        extra=[]
+        lower=text.lower()
+        for person in self.data.get('people',{}).values():
+            if re.search(r'\b'+re.escape(person['relation'])+r'\b',lower) and person['name'].lower() not in lower:extra.append(person['name'])
+            elif re.search(r'\b'+re.escape(person['name'].lower())+r'\b',lower) and person['relation'] not in lower:extra.append(person['relation'])
+        return text+(' ('+', '.join(extra)+')' if extra else '')
+
+    def people_context(self,text,history=()):
+        """The people in this message or the last few, with how they relate to the person, for the writer."""
+        people=self.data.get('people',{})
+        recent=(' '.join(r['content'] for r in list(history)[-4:] if r.get('role')=='user')+' '+text).lower()
+        named={p['name']:'their '+p['relation'] for p in people.values()
+               if re.search(r'\b(?:'+re.escape(p['name'].lower())+'|'+re.escape(p['relation'])+r')\b',recent)}
+        return dict(list(named.items())[:6])
+
+    def _meaning_rows(self,text,query_vector,limit=3,floor=.25):
+        """The stored exchanges closest in meaning to the message (cosine over unit vectors)."""
+        store=self.data.get('meaning')
+        if query_vector is None or not store or store.get('vectors') is None or not content_words(text):return []
+        vectors=store['vectors'].float()
+        sims=(vectors@query_vector.float().reshape(-1)).tolist()
+        by_id={e['id']:e for e in self.data['episodes']}
+        chosen,rows=[],[]
+        for k in sorted(range(len(sims)),key=lambda k:sims[k],reverse=True):
+            episode=by_id.get(store['ids'][k])
+            if sims[k]<floor or len(rows)==limit:break
+            if episode is None or episode['interpretation'].get('scope')=='external_fact':continue
+            # Never the same thing twice: a message said on many days filled every slot and pushed the answer out.
+            if any(float(vectors[k]@vectors[j])>.92 for j in chosen):continue
+            chosen.append(k);rows.append(episode)
+        return rows
+
+    def retrieve(self,text,limit=2,query_vector=None):
         """Conservative topic retrieval, biased by real emotional significance.
 
         A matched episode is a recorded exchange, not a verified life event.
         Affect can prioritize a relevant memory; it cannot manufacture one.
+        With a query vector (M1), the closest exchanges by meaning come first; word overlap fills in after them.
         """
+        self._sync_vectors()
+        # "good morning", "i'm bored", "same": a few words of small talk recalled unrelated memories on a single word or a
+        # vague mood (recall test). Short messages recall nothing unless they name someone Friday knows about.
+        if len(text.split())<4 and not (content_words(text)-self.SMALL_TALK_WORDS) and self.expand_for_recall(text)==text:return []
+        meaning=self._meaning_rows(text,query_vector)
+        if meaning:limit=max(limit,3)
+        text=self.expand_for_recall(text)
         # Greetings and filler matched old exchanges: "hey. long day" recalled "hey friday, finally friday lol" and the
         # writer answered a Monday with "Finally Friday too!" (v33 rerun, 2026-10-29).
         stop=set('i me my mine you your yours we us our the a an is are was were be been it that this those these to of in on for with and or but what how why who when where did do does have has had can could would will please tell remember earlier again about said told mention conversation talking something just '
@@ -206,7 +337,7 @@ class ExperienceModel:
         query=tokens(text);ranked=[]
         anchors=query.intersection({'cat','dog','mother','father','brother','sister','school','holiday','coffee'})
         for index,episode in enumerate(self.data['episodes']):
-            if episode['interpretation'].get('scope')=='external_fact':continue
+            if episode['interpretation'].get('scope')=='external_fact' or not self._worth_indexing(episode['input'],2):continue
             words=tokens(episode['input']);overlap=query.intersection(words)
             if not overlap or (anchors and not anchors.issubset(words)):continue
             relevance=len(overlap)/max(1,len(query))
@@ -216,7 +347,11 @@ class ExperienceModel:
             score=relevance+.1*min(1,salience/.2)+.05*(index+1)/max(1,len(self.data['episodes']))
             ranked.append((score,episode))
         rows=[]
-        for _,episode in sorted(ranked,key=lambda r:r[0],reverse=True)[:limit]:
+        chosen,said=[],set()
+        for episode in meaning+[e for _,e in sorted(ranked,key=lambda r:r[0],reverse=True)]:
+            if episode['input'].strip().lower() not in said:
+                said.add(episode['input'].strip().lower());chosen.append(episode)
+        for episode in chosen[:limit]:
             before,after=episode.get('before',{}),episode.get('after',{})
             rows.append({'source_type':'recorded_user_message','user_report':episode['input'][:240],
                 'user_report_is_not_verified_world_fact':True,
@@ -228,7 +363,7 @@ class ExperienceModel:
                     if abs(v-before.get(k,0))>.02]})
         return rows
 
-    def context(self,frame=None):
+    def context(self,frame=None,query_vector=None):
         # Supply scoped source-backed lessons, not the entire growing biography.
         lessons=[{'scope':v['scope'],'lesson':v['lesson'][:120],'source':v['evidence'][:80]}
                  for v in self.data['lessons'] if v['scope']!='external_fact' and v.get('status')!='tentative_interpretation'][-2:]
@@ -268,9 +403,10 @@ class ExperienceModel:
                 'goals':self.data['goals'],'lessons':lessons,'emotional_depth':round(self.depth,3),
                 'last_significant':last,'current_interpretation':interpretation,
                 'learned_principles':principles,'education_source':education.get('source'),
-                'recalled_experiences':self.retrieve(frame['evidence']) if frame else []}
+                'people_they_mentioned':self.people_context(frame['evidence']) if frame else {},
+                'recalled_experiences':self.retrieve(frame['evidence'],query_vector=query_vector) if frame else []}
 
-    def prepare(self,text,proposed):
+    def prepare(self,text,proposed,query_vector=None):
         frame=validate_frame(text,proposed)
         kind,scope=frame['kind'],frame['scope']
         previous=self.data['episodes'][-1] if self.data['episodes'] else None
@@ -310,7 +446,7 @@ class ExperienceModel:
         levels[1]=.35 if frame['confidence']<.65 else .5
         applied=[v['id'] for v in applicable]
         return {'frame':frame,'event':event,'feedback':feedback,'levels':levels,
-                'applied_lessons':applied,'context':self.context(frame),'depth':self.depth,
+                'applied_lessons':applied,'context':self.context(frame,query_vector),'depth':self.depth,'query_vector':query_vector,
                 'semantic_key':proposed.get('_semantic_key') if isinstance(proposed,dict) else None,
                 'semantic_class':proposed.get('_semantic_class') if isinstance(proposed,dict) else None}
 
@@ -352,7 +488,7 @@ class ExperienceModel:
             self.data['relationship']={'description':value,'source':'user_description','evidence':frame['evidence']}
         self.data['needs']=prepared['levels']
         prepared['depth']=self.depth
-        prepared['context']=self.context(frame)
+        prepared['context']=self.context(frame,prepared.get('query_vector'))
 
     def record(self,text,response,turn,prepared):
         stats=self.data['stats'];stats['interactions']+=1
@@ -364,7 +500,12 @@ class ExperienceModel:
                  'interpretation':prepared['frame'],'applied_lessons':prepared['applied_lessons'],
                  'before':before,'after':after,'development':turn.development,'feedback_used':False}
         self.data['episodes'].append(episode);self.data['episodes']=self.data['episodes'][-self.capacity:]
-        self._note_conversation(episode,now);self._note_events(text,now)
+        self._note_conversation(episode,now);self._note_events(text,now);self._note_people(text,now)
+        if self.meaning_enabled and self._worth_indexing(text):
+            # After the reply is on screen: about 10 ms, while the checkpoint is being saved anyway.
+            self._sync_vectors()
+            vector=self.meaning.embed([text])
+            if vector is not None:self._add_vectors([episode['id']],vector)
         significant=turn.development and turn.development['event']['relevance']>.35
         if prepared['frame']['kind'] in ('correction','feedback','introduction','relationship','preference') or significant:
             # Compact, source-backed narrative for later self explanations.
