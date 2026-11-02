@@ -296,14 +296,17 @@ class NativeLanguage:
                     from conversation_evidence import ABOUT_FRIDAY,FRIDAY_ASKED
                     import time_sense
                     own_words=ABOUT_FRIDAY.search(turn.text) or FRIDAY_ASKED.search(turn.text)
+                    # M1: only when and what they said. The flags, labels and emotion lists on every recalled exchange made the
+                    # prompt longer, and reading the prompt is most of a reply's time (+0.45 s per reply in the A/B timing run).
                     rows=[]
                     for v in recorded['recalled_experiences']:
-                        v=dict(v)
-                        if not own_words:v.pop('agent_reply',None);v.pop('agent_reply_is_not_verified_world_fact',None)
-                        try:v['when']=time_sense.when_words(time_sense.parse(v.pop('time_utc')))
-                        except (KeyError,ValueError,TypeError):v.pop('time_utc',None)
-                        rows.append(v)
-                    recorded['recalled_experiences']=rows
+                        try:when=time_sense.when_words(time_sense.parse(v.get('time_utc')))
+                        except (KeyError,ValueError,TypeError):when='earlier'
+                        row={'when':when,'they_said':v.get('user_report','')[:160]}
+                        if own_words and v.get('agent_reply'):row['you_replied']=v['agent_reply'][:120]
+                        rows.append(row)
+                    recorded['things_they_told_you_before_(their_words,_not_verified_facts)']=rows
+                    recorded.pop('recalled_experiences')
             recorded.pop('goals',None)  # numeric goal weights steer appraisal in the engine, not wording
             facts={'recorded_context':recorded,'actual_affect':state,'affect_intensity_words':levels,
                    'regulation':development['strategy'] if development else 'NONE',
@@ -503,7 +506,7 @@ class NativeLanguage:
                     extra=next((k for k in ('earlier_in_this_conversation_(no_longer_shown)','your_recorded_feelings','learned_response_preferences',
                                             'openings_and_closings_you_just_used_(vary_them)','words_and_images_you_keep_reusing_(pick_something_else)') if k in facts),None)
                     if extra:facts.pop(extra);continue
-                    if isinstance(facts.get('recorded_context'),dict) and facts['recorded_context'].pop('recalled_experiences',None):continue
+                    if isinstance(facts.get('recorded_context'),dict) and facts['recorded_context'].pop('things_they_told_you_before_(their_words,_not_verified_facts)',None):continue
                     if isinstance((facts.get('time_and_memory') or {}).get('previous_conversation'),dict) and facts['time_and_memory']['previous_conversation'].pop('they_told_you',None):continue
                     check=facts.get('memory_check_against_the_actual_record') or {}
                     listing=check.get('your_conversations_with_them_oldest_first')
