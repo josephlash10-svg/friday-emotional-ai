@@ -44,6 +44,13 @@ def main(first, second):
     lines = ['# V0 labeler agreement', '', f'Labelers: `{Path(first).name}` ({len(a)} items) and `{Path(second).name}` ({len(b)} items); '
              f'{len(shared)} items labeled by both.', '', '| Question | Both answered yes/no | Agreement | Kappa | Decision |', '|---|---|---|---|---|']
     kept = []
+    # The overall rating, as two yes/no splits: any problem at all, and a major one.
+    for name, problem in (('Rating: any problem (minor or major)', ('minor', 'major')), ('Rating: major problem', ('major',))):
+        both = [('yes' if a[i].get('rating') in problem else 'no', 'yes' if b[i].get('rating') in problem else 'no')
+                for i in shared if a[i].get('rating') and b[i].get('rating')]
+        k = kappa(both)
+        lines.append(f"| {name} | {len(both)} | {(sum(x == y for x, y in both) / len(both) if both else 0):.0%} | "
+                     f"{'n/a' if k is None else f'{k:.2f}'} | {'reported' if k is not None else '—'} |")
     for q in questions:
         pairs = [(a[i]['labels'].get(q['id']), b[i]['labels'].get(q['id'])) for i in shared]
         both = [(x, y) for x, y in pairs if x in ('yes', 'no') and y in ('yes', 'no')]
@@ -53,7 +60,7 @@ def main(first, second):
                     'UNRATED (too few items)' if len(both) < MIN_ITEMS else 'UNRATED')
         if decision == 'KEEP':
             kept.append(q['id'])
-        lines.append(f"| {q['id']} {q['text'][:60]}… | {len(both)} | {raw:.0%} | {'n/a' if k is None else f'{k:.2f}'} | {decision} |")
+        lines.append(f"| {q['id']} {q.get('short', q['text'][:60])} | {len(both)} | {raw:.0%} | {'n/a' if k is None else f'{k:.2f}'} | {decision} |")
     lines += ['', f'Kept: {", ".join(kept) or "none"} ({len(kept)} of {len(questions)}). The V0 pass bar is kappa >= {KEEP} on every kept question '
               'and at least 6 questions kept: ' + ('**PASS**' if len(kept) >= 6 else '**not yet**') + '.']
     report = ROOT / 'verifier/reports/agreement.md'
