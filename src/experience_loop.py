@@ -46,6 +46,7 @@ def prepare_experience(agent,state,text,frame,needs,measured=False):
                                'earlier_messages_in_this_conversation':current}
     prepared['time_context']=time_context(agent.experience,current)
     prepared['feeling_history']=agent.experience.feeling_history()
+    prepared['their_words']=[e['input'] for e in episodes]  # whose sister, whose wedding: for the speaker fixes after review
     return state,needs,prepared
 
 def time_context(experience,messages_so_far,now=None):

@@ -290,6 +290,20 @@ class NativeLanguage:
                 visible={r['content'][:240] for r in turn.history if r['role']=='user'}
                 recorded['recalled_experiences']=[v for v in recorded['recalled_experiences'] if v.get('user_report') not in visible]
                 if not recorded['recalled_experiences']:recorded.pop('recalled_experiences')
+                else:
+                    # v33: a recalled reply of Friday's own is only shown when they ask what Friday said. Old replies carried old
+                    # mistakes forward ("I don't have a record of our past conversations" was recalled for "how long has it been").
+                    from conversation_evidence import ABOUT_FRIDAY,FRIDAY_ASKED
+                    import time_sense
+                    own_words=ABOUT_FRIDAY.search(turn.text) or FRIDAY_ASKED.search(turn.text)
+                    rows=[]
+                    for v in recorded['recalled_experiences']:
+                        v=dict(v)
+                        if not own_words:v.pop('agent_reply',None);v.pop('agent_reply_is_not_verified_world_fact',None)
+                        try:v['when']=time_sense.when_words(time_sense.parse(v.pop('time_utc')))
+                        except (KeyError,ValueError,TypeError):v.pop('time_utc',None)
+                        rows.append(v)
+                    recorded['recalled_experiences']=rows
             recorded.pop('goals',None)  # numeric goal weights steer appraisal in the engine, not wording
             facts={'recorded_context':recorded,'actual_affect':state,'affect_intensity_words':levels,
                    'regulation':development['strategy'] if development else 'NONE',
@@ -380,12 +394,12 @@ class NativeLanguage:
             tone=tone_read(turn.text)
             if tone:facts['how_this_message_reads_(estimate)']=tone
             if experience and experience.get('memory_check'):
-                facts['memory_check_against_the_actual_record']=experience['memory_check']
+                facts['memory_check_against_the_actual_record']=dict(experience['memory_check'])
             # v33 (2026-10-29): days, dates and the gap since the last chat, every turn (10-day simulation findings).
             if experience and experience.get('time_context'):
                 facts['time_and_memory']=experience['time_context']
-                fixed+=(' Use time_and_memory for anything about days or dates: an event marked "already happened" is in the past, so ask how it went; '
-                        'say today, tonight, yesterday or Saturday from it, never from how the conversation was worded earlier.')
+                fixed+=(' Use time_and_memory for anything about days or dates: say today, tonight, yesterday or Saturday from it, never from how '
+                        'the conversation was worded earlier. An event that "already happened" is in the past; ask how it went only if they haven\'t already told you.')
             import conversation_checks as cc
             history_rows=list(turn.history)
             if experience and experience.get('feeling_history') and (introspection or re.search(
@@ -393,6 +407,9 @@ class NativeLanguage:
                 facts['your_recorded_feelings']=[{'feeling':MOOD_WORDS.get(f['emotion'],f['emotion'])+(' rose' if f['size']=='small' else ' rose noticeably'),
                                                   'when':f['when'],'while_they_said':f['while_they_said']} for f in experience['feeling_history']]
                 fixed+=' If asked about your feelings over time or your bad days, answer from your_recorded_feelings (real moments), not generic human days.'
+            if cc.ASKS_ABOUT_GAPS.search(turn.text.replace('’',"'")):
+                facts['time_between_chats']=('you are not running between chats, so there is nothing you do or feel then: no waiting, reading or quiet room. '
+                                             'You notice the gap only when they come back, because you can see how long it was. Say that simply, warmly')
             target=cc.length_target(turn.text)
             if target:facts['length']=f'about {target} words or fewer (a soft target: say what matters, keep one real reaction, then stop)'
             repeated=cc.repeated_openers_closers(history_rows)
@@ -480,7 +497,18 @@ class NativeLanguage:
                 rendered=self.request('/apply-template',{'messages':messages,'chat_template_kwargs':{'enable_thinking':False}})['prompt']
                 tokens=self.request('/tokenize',{'content':rendered,'add_special':False})['tokens']
                 if len(tokens)<=self.context-reserve:return messages
-                if not history:raise ValueError('Message is too long for the CPU context window; shorten it or split it into parts.')
+                if not history:
+                    # With no history left, give up the least essential notes before refusing the message
+                    # ("which day was hardest for me?" overflowed in the v33 rerun).
+                    extra=next((k for k in ('earlier_in_this_conversation_(no_longer_shown)','your_recorded_feelings','learned_response_preferences',
+                                            'openings_and_closings_you_just_used_(vary_them)','words_and_images_you_keep_reusing_(pick_something_else)') if k in facts),None)
+                    if extra:facts.pop(extra);continue
+                    if isinstance(facts.get('recorded_context'),dict) and facts['recorded_context'].pop('recalled_experiences',None):continue
+                    if isinstance((facts.get('time_and_memory') or {}).get('previous_conversation'),dict) and facts['time_and_memory']['previous_conversation'].pop('they_told_you',None):continue
+                    check=facts.get('memory_check_against_the_actual_record') or {}
+                    listing=check.get('your_conversations_with_them_oldest_first')
+                    if isinstance(listing,list) and len(listing)>2:check['your_conversations_with_them_oldest_first']=listing[1:];continue
+                    raise ValueError('Message is too long for the CPU context window; shorten it or split it into parts.')
                 trimmed+=[r['content'] for r in history[:2] if r['role']=='user']
                 del history[:2]
         system=('You are Friday, a conversational partner with persistent engineered emotion variables. '
@@ -609,7 +637,9 @@ class NativeLanguage:
                     remaining=violations(reply,turn,names)
                     if not reply:remaining=['Empty revised reply']
                 else:remaining=['Review exceeds context budget']
-                if remaining:reply=salvage(reply,turn,names) or salvage(draft,turn,names) or fallback(turn,names,issues)
+                # A rewrite that only echoes an earlier reply is better shown than the generic fallback line (v33 rerun).
+                if remaining and not all('Repeated an earlier reply' in issue for issue in remaining):
+                    reply=salvage(reply,turn,names) or salvage(draft,turn,names) or fallback(turn,names,issues)
             from response_monitor import trim_question_streak,fix_safety_numbers
             reply=re.sub(r'\s*\n\s*',' ',reply).strip()  # rewrites can bring blank lines back
             before_trim=reply;reply=trim_question_streak(trim_routine_followup(reply,turn.text),turn.text,turn.history)
@@ -617,7 +647,8 @@ class NativeLanguage:
             reply=cc.unflip_speaker(reply,turn.text)  # "what did I ask you?" answered "I asked you..." (issue #5)
             reply=cc.unflip_still_you(reply)  # "it's still you talking to me" about Friday's next version (finding #9)
             if not re.search(r'\b(?:write|draft|text|message|email|letter|reply)\b',turn.text,re.I):
-                theirs=[r['content'] for r in turn.history if r['role']=='user']+[turn.text]
+                # Everything they've said, not just today's chat: "my sisters wedding" was said on an earlier day (finding #45).
+                theirs=list((experience or {}).get('their_words') or ())+[r['content'] for r in turn.history if r['role']=='user']+[turn.text]
                 reply=cc.swap_possessive(reply,theirs)  # "my brother" when it's theirs (issue #5)
                 reply=cc.swap_event_owner(reply,theirs)  # "your wedding" when it's their sister's (finding #45)
             reply=cc.vary_opener_closer(reply,turn.history) or reply  # "Honestly," / "You've got this." on repeat (#4, #41)
@@ -649,7 +680,7 @@ class NativeLanguage:
             else:
                 # Five of ten simulated days opened by continuing the previous chat's last line as if no time had passed (2026-10-29).
                 guidance+=('Time has passed since you last talked (see time_since_you_last_talked): do not continue their last message as if it was just said. '
-                           'If one of their_events_around_now has already happened, asking how it went is the best opener; otherwise you can mention '
+                           'If one of their_events_around_now has already happened and they haven\'t told you how it went yet, asking about it is the best opener; otherwise you can mention '
                            'something from last_time_they_told_you_about, in the past tense. Never invent anything that happened, and don\'t claim you '
                            'were thinking about them or waiting, since you don\'t run between chats. ')
         guidance+='Let your current mood color the greeting without announcing it.'
@@ -663,7 +694,8 @@ class NativeLanguage:
                      'logit_bias':[[w,-2.5] for w in CLICHE_WORDS]}
             text=self._stream(payload)
             # The opening isn't reviewed like replies, so at least keep it from claiming time it didn't live through.
-            if attempt or not re.search(r"(?i)(?:i was (?:just )?thinking about|been thinking about)",text) and not cc.BETWEEN_CHATS.search(text):break
+            # "Hey, sorry I missed you for almost two days" (v33 rerun): it didn't miss anyone; they were away.
+            if attempt or not re.search(r"(?i)(?:i was (?:just )?thinking about|been thinking about|sorry (?:i|for) (?:missed|missing)|i(?:'ve| have) missed you)",text) and not cc.BETWEEN_CHATS.search(text):break
         text=cc.finish_cut_reply(text)
         if on_token:on_token(text)
         return text

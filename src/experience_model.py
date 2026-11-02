@@ -73,6 +73,9 @@ class ExperienceModel:
             try:said=time_sense.parse(episode['time_utc'])
             except (KeyError,ValueError,TypeError):continue
             self._note_conversation(episode,said);self._note_events(episode['input'],said)
+            # Profile facts said before the "Im" fix never reached the profile (live chat 2026-10-29: the job was lost).
+            for found in declarations(episode['input'],self.data['user'].get('name',{}).get('value')):
+                self.data['user'].setdefault(found['attribute'],{'value':found['value'],'evidence':found['evidence']})
 
     @staticmethod
     def _highlight_score(episode):
@@ -140,7 +143,24 @@ class ExperienceModel:
         now=time.time() if now is None else now
         today=time_sense.local_date(now)
         near=[e for e in self.data.get('events',[]) if -back<=(datetime.date.fromisoformat(e['date'])-today).days<=ahead]
-        return [time_sense.event_status(e,now) for e in sorted(near,key=lambda e:e['date'])]
+        rows=[]
+        for event in sorted(near,key=lambda e:e['date']):
+            row=time_sense.event_status(event,now)
+            told=self._told_about(event)
+            # Without this, Friday asked "how did the concert go?" on three days running (v33 rerun, 2026-10-29).
+            if told:row['they_already_told_you_how_it_went']=time_sense.when_words(told,now)
+            rows.append(row)
+        return rows
+
+    def _told_about(self,event):
+        """When they first mentioned the event on a later day than it happened, or None."""
+        head=event['what'].split()[-1].lower();day=datetime.date.fromisoformat(event['date'])
+        for episode in self.data['episodes']:
+            try:said=time_sense.parse(episode['time_utc'])
+            except (KeyError,ValueError,TypeError):continue
+            if time_sense.local_date(said)>day and re.search(r'\b'+re.escape(head)+r'\b',episode['input'].lower()):
+                return said
+        return None
 
     def conversation_overview(self,now=None,limit=6,per=3):
         """The last few conversations, oldest first: when, and the most telling things they said."""
@@ -150,7 +170,7 @@ class ExperienceModel:
         for conversation in (earlier+([current] if current else []))[-limit:]:
             top=sorted(conversation['highlights'],key=lambda h:h['score'],reverse=True)[:per]
             rows.append({'when':time_sense.when_words(time_sense.parse(conversation['start_utc']),now),
-                         'they_said':[h['text'] for h in sorted(top,key=lambda h:h['time_utc'])]})
+                         'they_said':[h['text'][:100] for h in sorted(top,key=lambda h:h['time_utc'])]})
         return rows
 
     def feeling_history(self,now=None,limit=5):
@@ -177,7 +197,10 @@ class ExperienceModel:
         A matched episode is a recorded exchange, not a verified life event.
         Affect can prioritize a relevant memory; it cannot manufacture one.
         """
-        stop=set('i me my mine you your yours we us our the a an is are was were be been it that this those these to of in on for with and or but what how why who when where did do does have has had can could would will please tell remember earlier again about said told mention conversation talking something just'.split())
+        # Greetings and filler matched old exchanges: "hey. long day" recalled "hey friday, finally friday lol" and the
+        # writer answered a Monday with "Finally Friday too!" (v33 rerun, 2026-10-29).
+        stop=set('i me my mine you your yours we us our the a an is are was were be been it that this those these to of in on for with and or but what how why who when where did do does have has had can could would will please tell remember earlier again about said told mention conversation talking something just '
+                 'hey hi hello yo lol haha ok okay yeah yep nah so well oh im its dont got get gonna going know think really still much long since last talk talked day today time back'.split())
         aliases={'died':'loss','death':'loss','die':'loss','lost':'loss','grieving':'loss','grief':'loss','missing':'miss','kitten':'cat','puppy':'dog'}
         def tokens(value):return {aliases.get(v,v) for v in re.findall(r'\b[\w-]+\b',value.lower()) if v not in stop}
         query=tokens(text);ranked=[]

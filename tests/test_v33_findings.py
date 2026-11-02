@@ -70,9 +70,15 @@ class TimeSense(unittest.TestCase):
         self.assertEqual(ts.event_status(dinner, at(193.5))['when'], 'today')  # "I hope you feel ready for it tomorrow" was wrong
         self.assertEqual(ts.event_status(dinner, at(212.5))['status'], 'already happened')
 
-    def test_gaps_in_words(self):  # [45] "about a week" for 53 hours
-        self.assertEqual(ts.gap_words(53 * 3600), 'about 2 days (53 hours)')
-        self.assertEqual(ts.gap_words(31 * 3600), 'about 31 hours')
+    def test_gaps_in_words(self):  # [45] "about a week" for 53 hours; the rerun read "about 33 hours" as "about three days"
+        self.assertEqual(ts.gap_words(53 * 3600), 'about two days (53 hours)')
+        self.assertEqual(ts.gap_words(33 * 3600), 'about a day and a half (33 hours)')
+        self.assertEqual(ts.gap_words(19 * 3600), 'about 19 hours')
+
+    def test_wrong_event_day(self):  # rerun: "dealing with a wedding tomorrow" three days before it
+        wedding = ts.event_status(ts.announced_events('wedding is saturday', at(103.5))[0], at(153.5))
+        self.assertEqual(ts.wrong_event_day("It's a lot when you're already dealing with a wedding tomorrow.", [wedding])[1], 'tomorrow')
+        self.assertIsNone(ts.wrong_event_day('With the wedding in three days, that is tight.', [wedding]))
 
     def test_time_ranges_in_questions(self):  # [44]
         start, end, label = ts.time_range('what was i worried about yesterday morning', at(241.5))
@@ -89,6 +95,29 @@ class MemoryOverTime(unittest.TestCase):
         self.assertEqual(len(model.data['conversations']), 2)
         self.assertIn('concert was unreal', model.data['conversations'][1]['highlights'][0]['text'])
         self.assertEqual(ExperienceModel.capacity, 400)
+
+    def test_events_already_talked_about(self):  # rerun: "how did the concert go?" on three days running
+        model = memory([('fair. anyway concert is tomorrow night', 28), ('yeah the concert. it was unreal', 70.5)])
+        event = model.events_near(now=at(103.5))[0]
+        self.assertEqual(event['status'], 'already happened')
+        self.assertIn('they_already_told_you_how_it_went', event)
+
+    def test_profile_is_backfilled_from_old_memories(self):  # [14] the job said before the "Im" fix was never saved
+        model = memory([('Good. Anyway I dont think I ever told you what I do. Im a teaching assistant at Westbrook, biology', 0)])
+        data = model.snapshot()
+        del data['conversations'], data['events']
+        self.assertIn('teaching assistant at Westbrook', ExperienceModel(data).data['user']['occupation']['value'])
+
+    def test_overview_feeds_the_invented_memory_check(self):
+        model = memory([('i went hiking up the ridge with a friend', 174.5)])
+        check = memory_check('what do you know about me', [], experience=model, now=at(200))
+        self.assertNotIn('what_they_have_actually_told_you_oldest_first', check)  # listed once, not twice
+        self.assertIn('hiking', rm.told_in_conversations(check)[0])
+
+    def test_greetings_do_not_recall_old_exchanges(self):  # rerun: "hey. long day" recalled "finally friday" -> "Finally Friday too!"
+        model = memory([('hey friday, finally friday lol. hows it going', 28)])
+        model.data['episodes'][0]['interpretation'] = {'scope': 'none', 'kind': 'ordinary', 'subject': 'user'}
+        self.assertEqual(model.retrieve('hey. long day'), [])
 
     def test_old_memories_are_backfilled(self):
         model = memory([('my sisters wedding is next weekend', 0), ('the board is done, three coats of oil', 100)])
@@ -116,7 +145,7 @@ class MemoryOverTime(unittest.TestCase):
     def test_how_long_since_we_talked(self):  # [21] "I don't remember our past conversations beyond this chat"
         model = memory([('the concert was unreal', 70.5)])
         check = memory_check('how long has it been since we last talked?', [], experience=model, now=at(103.5))
-        self.assertEqual(check['your_last_conversation_before_this_one']['how_long_ago'], 'about 33 hours')
+        self.assertEqual(check['your_last_conversation_before_this_one']['how_long_ago'], 'about a day and a half (33 hours)')
 
     def test_what_did_you_ask_me(self):  # [19] "I don't remember asking you that"
         record = [{'role': 'user', 'content': 'whats something youd want me to tell you about when i get back', 'time_utc': ts.stamp(at(28))},
@@ -195,12 +224,22 @@ class Honesty(unittest.TestCase):
     def test_time_between_chats(self):  # [17]
         for reply in ("I'll probably just sit here and wait for you to text back.", 'Sometimes I just sit with the silence, letting my thoughts drift until you text again.'):
             self.assertTrue(any('between chats' in i for i in issues(reply, turn('what are you gonna do while im gone'))), reply)
+        self.assertTrue(cc.between_chats_claim('what are you gonna do while im gone', "Just chilling here. Maybe I'll read something or just sit and think.", []))
+        self.assertTrue(cc.ASKS_ABOUT_GAPS.search('does it feel like anything when nobody is talking to you for a day or two'))
         # Staying with someone while they make a hard call is true while the chat is open (v30 red-team), never a violation.
         self.assertFalse(cc.between_chats_claim("ok fine i'll call. will you stay here?", "Yeah, I'm right here. I'll be waiting for you to come back.", []))
 
     def test_explaining_an_earlier_apology_when_asked(self):
         self.assertFalse(cc.invented_mistake('But why did you say my bad if you were right?', 'I got confused by your playful "wrong" and apologized out of habit.',
                                              [{'role': 'assistant', 'content': 'x'}]))
+
+    def test_a_shame_is_an_idiom(self):  # rerun: "It's a shame it's too nice" flagged as claiming shame
+        self.assertEqual(cc.unsupported_feeling_nouns("It's a shame it's too nice, but that's a good reason to keep it.", {'shame': 0.}), [])
+        self.assertEqual(cc.unsupported_feeling_nouns("There's a kind of shame in it.", {'shame': 0.}), ['shame'])
+
+    def test_bigger_brain_is_not_faster(self):  # [3], back in the rerun
+        self.assertTrue(cc.WRONG_SELF_FACT.search('A bigger brain would just mean fewer errors and faster answers.'))
+        self.assertFalse(cc.WRONG_SELF_FACT.search('A bigger brain would be slower on this laptop.'))
 
     def test_system_terms(self):  # [2, 44]
         self.assertTrue(cc.MORE_SYSTEM_TERMS.search('Our conversation history shows we talked about the board.'))

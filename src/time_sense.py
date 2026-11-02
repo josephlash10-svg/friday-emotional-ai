@@ -74,15 +74,21 @@ def when_words(seconds, now=None):
     return label
 
 
+SPELLED = ('zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen')
+
+
 def gap_words(seconds):
-    """A length of time in plain words, exact enough to answer 'how long has it been'."""
+    """A length of time in plain words, exact enough to answer 'how long has it been'. Days are spelled out and anchored
+    to a familiar span: given "about 33 hours", the 4B writer answered "about three days" (v33 rerun, 2026-10-29)."""
     if seconds < 90: return 'a minute or so'
     if seconds < 3600: return f'{round(seconds / 60)} minutes'
-    hours = seconds / 3600
-    if hours < 36: return f'about {round(hours)} hour{"s" if round(hours) != 1 else ""}'
-    days = seconds / 86400
-    whole = round(days)
-    return f'about {whole} days ({round(hours)} hours)' if days < 7 else f'about {whole} days' if days < 14 else f'about {round(days / 7)} weeks'
+    hours = round(seconds / 3600)
+    if hours < 20: return f'about {hours} hour{"s" if hours != 1 else ""}'
+    if hours < 30: return f'about a day ({hours} hours)'
+    if hours < 42: return f'about a day and a half ({hours} hours)'
+    days = round(seconds / 86400)
+    if days < 14: return f'about {SPELLED[days]} days ({hours} hours)' if days < 4 else f'about {SPELLED[days]} days'
+    return f'about {SPELLED[min(round(days / 7), 13)]} weeks'
 
 
 # --- Events the person announces ("concert is tomorrow night", "my sisters wedding is next weekend") ---------------
@@ -180,7 +186,30 @@ def event_status(event, now=None):
     elif days > 1:
         label = f'in {days} days ({short_date(day)})' if event.get('part') != 'week' else f'next week (from {short_date(day)})'
     status = 'coming up' if days > 0 else 'today' if days == 0 else 'already happened'
-    return {'what': event['what'], 'when': label, 'status': status}
+    return {'what': event['what'], 'when': label, 'status': status, 'days_from_today': days}
+
+
+# --- A reply that puts their event on the wrong day ("the wedding tomorrow" three days out) --------------------------
+RELATIVE_DAY = re.compile(r"(?i)\b(today|tonight|this (?:morning|afternoon|evening)|tomorrow|yesterday|last night|in (\d+|two|three|four|five|six|seven) days|(\d+|two|three|four|five|six|seven) days ago)\b")
+
+
+def wrong_event_day(reply, events):
+    """(event, the reply's wrong day word) when the reply puts one of their dated events on a day it isn't on."""
+    for event in events or ():
+        head = event['what'].split()[-1].lower()
+        for mention in re.finditer(r'(?i)\b' + re.escape(head) + r'\b', reply):
+            window = reply[max(0, mention.start() - 15):mention.end() + 20]  # "tomorrow's wedding", "the wedding is in three days"
+            for word in RELATIVE_DAY.finditer(window):
+                said = word.group(1).lower()
+                if said in ('today', 'tonight') or said.startswith('this '): days = 0
+                elif said == 'tomorrow': days = 1
+                elif said in ('yesterday', 'last night'): days = -1
+                else:
+                    count = word.group(2) or word.group(3)
+                    days = (int(count) if count.isdigit() else SPELLED.index(count)) * (1 if word.group(2) else -1)
+                if days != event['days_from_today']:
+                    return event, word.group(1)
+    return None
 
 
 # --- Time ranges in questions ("what was I worried about yesterday morning?") --------------------------------------

@@ -897,7 +897,11 @@ def main(ui=None):
         # Friday opens the conversation from its actual memory and current mood.
         try:
             print('Friday > ',end='',flush=True)
-            greeting=native.opening(opening_facts(agent,state),on_token=lambda piece:print(piece,end='',flush=True))
+            import conversation_checks as cc
+            theirs=[e['input'] for e in agent.experience.data['episodes']] if agent.cfg.experience_model else []
+            # "Since your wedding is in three days": it was their sister's (v33 rerun). The opening is printed whole, so fix it first.
+            greeting=native.opening(opening_facts(agent,state),on_token=lambda piece:print(cc.swap_event_owner(cc.swap_possessive(piece,theirs),theirs),end='',flush=True))
+            greeting=cc.swap_event_owner(cc.swap_possessive(greeting,theirs),theirs)
             print()
             agent.chat_history.append({'role':'assistant','content':greeting})
         except (RuntimeError,ValueError) as error:print(f'(Friday could not open the conversation: {error})')

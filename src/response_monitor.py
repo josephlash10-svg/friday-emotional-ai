@@ -67,6 +67,11 @@ def arithmetic_evidence(history):
     result=re.search(r'\b(?:is|equals|comes to|=)(?: actually)?\s*(-?\d+)\b',answer,re.I) or re.fullmatch(r'\s*(-?\d+)\s*[.!]?\s*',answer)
     return {'expression':match.group(0),'correct_result':value,'previous_result':int(result.group(1)) if result else None}
 
+def told_in_conversations(check):
+    """The things they said, flattened from the v33 per-conversation listing (None when there is none)."""
+    rows=check.get('your_conversations_with_them_oldest_first')
+    return [t for row in rows if isinstance(row,dict) for t in row.get('they_said',[])] or None if isinstance(rows,list) else None
+
 def violations(reply,turn,names):
     issues=[];lower=reply.lower().replace('’',"'");text=turn.text
     experience=getattr(turn,'experience',None) or {};context=experience.get('context',{})
@@ -160,7 +165,7 @@ def violations(reply,turn,names):
             issues.append('Denied a recorded memory: the record shows they did tell you ("'+str(told).rstrip('.')+'"). Confirm it warmly instead of saying they did not.')
     if re.search(r"\bmy memory (?:is|was|gets|can be|has been) (?:a (?:bit|little) |really |kind of |pretty |so )?(?:fuzzy|hazy|foggy|spotty|bad|unreliable|blurry)\b",lower):
         issues.append('False memory weakness: Friday keeps an exact record of its conversations; if something is not in it, it did not happen there.')
-    recalled=check.get('what_they_have_actually_told_you_oldest_first')
+    recalled=check.get('what_they_have_actually_told_you_oldest_first') or told_in_conversations(check)
     claimed=re.search(r"\bi remember (?:you |when you |how you )?(?:telling|told|saying|said|mentioning|mentioned|talking)(?: me)?(?: about)? (.+?)(?:[.!?]|$)",lower)
     if claimed and isinstance(recalled,list):
         from conversation_evidence import content_words
@@ -268,6 +273,13 @@ def violations(reply,turn,names):
         issues.append('Invented personal history: you don\'t have human days. For your feelings over time, use your_recorded_feelings, real moments from your conversations.')
     if cc.MORE_SYSTEM_TERMS.search(reply):
         issues.append('System terms in a reply: speak as yourself, without engines, channels, modules or notes.')
+    if cc.WRONG_SELF_FACT.search(own):
+        issues.append('Wrong about yourself: you run on this computer, so a bigger model would make you slower here, not faster.')
+    import time_sense
+    wrong_day=time_sense.wrong_event_day(reply,(experience.get('time_context') or {}).get('their_dated_events'))
+    if wrong_day:
+        event,said=wrong_day
+        issues.append(f'Wrong day: their {event["what"].replace("their ","")} {"was" if event["days_from_today"]<0 else "is"} {event["when"]}, not "{said}". Use the day from time_and_memory.')
     return list(dict.fromkeys(issues))
 
 def salvage(reply,turn,names):
@@ -347,7 +359,8 @@ def fallback(turn,names,issues):
             return 'Yes, you did — you told me: “'+told.rstrip('.')+'.”'
         return 'Yes, you did mention that to me.'
     if any('Invented memory' in issue or 'False memory weakness' in issue for issue in issues):
-        said=((getattr(turn,'experience',None) or {}).get('memory_check') or {}).get('what_they_have_actually_told_you_oldest_first')
+        check=(getattr(turn,'experience',None) or {}).get('memory_check') or {}
+        said=check.get('what_they_have_actually_told_you_oldest_first') or told_in_conversations(check)
         if isinstance(said,list) and said:
             return 'What I actually have from you so far: “'+said[0].rstrip('.')+'.”'+(' And most recently: “'+said[-1].rstrip('.')+'.”' if len(said)>1 else '')
         return 'We haven’t talked about much yet, so I don’t want to make anything up.'

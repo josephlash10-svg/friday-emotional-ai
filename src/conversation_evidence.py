@@ -236,9 +236,8 @@ def memory_check(text, history, earlier_conversations=0, experience=None, now=No
         profile = {k: v['value'] for k, v in experience.data.get('user', {}).items() if isinstance(v, dict) and v.get('value')}
         if profile:
             result['what_you_know_about_them'] = profile
+        # One listing only (a second flat copy overflowed the window in the v33 rerun); the reply monitor reads it as is.
         result['your_conversations_with_them_oldest_first'] = experience.conversation_overview(now) or 'none yet'
-        said = [t for c in result['your_conversations_with_them_oldest_first'] if isinstance(c, dict) for t in c['they_said']]
-        result['what_they_have_actually_told_you_oldest_first'] = said or 'nothing yet'
         result['instruction'] = ('Answer from these, oldest to newest, naming specific things they told you. You do know them; never say you '
                                  'know little or that they have been quiet. Do not add details that are not here.')
         return result
