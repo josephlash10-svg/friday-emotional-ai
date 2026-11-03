@@ -695,6 +695,10 @@ def load_checkpoint(path):
     agent.chat_history=checkpoint.get('history',[]); validate_history(agent.chat_history)
     agent.state_updated_at=checkpoint.get('state_updated_at')
     if cfg.experience_model: agent.experience=ExperienceModel(checkpoint.get('experience'))
+    if getattr(getattr(agent,'interpreter',None),'extended',False):
+        # v35: the shipped appraisal heads that also read the MiniLM sentence vector (see semantic_interpreter.py).
+        from semantic_interpreter import attach_meaning_heads
+        agent.appraisal_heads=attach_meaning_heads(agent.interpreter)
     if checkpoint.get('outcome_optimizer') is not None:
         agent.outcome_optimizer=torch.optim.AdamW((p for p in agent.parameters() if p.requires_grad),lr=cfg.lr)
         agent.outcome_optimizer.load_state_dict(copy.deepcopy(checkpoint['outcome_optimizer']))

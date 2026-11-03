@@ -226,6 +226,10 @@ def violations(reply,turn,names):
     # v32 (2026-10-21): the open GitHub issues; see conversation_checks.py.
     if cc.unsupported_accusation(text,check,counts,history) and cc.CONCESSION.search(reply):
         issues.append('Accepted a false accusation: nothing in the record shows you missed or ignored this. Do not apologize for something that did not happen; say calmly that you do not see it and offer to help now.')
+    if cc.covered_slip(text,reply,history):
+        issues.append('Covered a slip: they pointed out that you misread them. Don\'t say you were kidding; own it simply ("Oh, I mixed that up"), then answer what they actually said.')
+    if cc.left_them_wondering(text,reply):
+        issues.append('Left them wondering if they are too much: say plainly and warmly that they are not (you like hearing about their days, the hard parts too). Don\'t call their sharing heavy or a lot to hold.')
     if cc.took_the_joke_number(text,reply,history):
         issues.append('Took the joke as the answer: they said the pushback was a joke, so your answer stands. Laugh it off lightly; do not adopt their number.')
     if cc.gave_up_without_reason(text,reply,history):
@@ -367,6 +371,10 @@ def fallback(turn,names,issues):
         return 'Ouch. That one stings a little. I’m still here, though, if you want to actually talk.'
     if any('Promised something you can' in issue for issue in issues):
         return 'I can’t send you reminders, since I only talk when you open the chat. A phone reminder would do it.'
+    if any('Left them wondering' in issue for issue in issues):
+        return 'No, you’re not too much. I like hearing about your days, the hard parts too.'
+    if any('Covered a slip' in issue for issue in issues):
+        return 'Oh, you’re right, I mixed that up. Sorry about that.'
     if any('Guessed what they meant' in issue for issue in issues):
         return 'Wait, what happened? Tell me.'
     if any('Took the joke' in issue for issue in issues):

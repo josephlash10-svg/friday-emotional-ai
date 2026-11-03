@@ -214,6 +214,23 @@ CATEGORIES = {
   'my roommate compares herself to instagram models', 'the two laptops are basically the same, can\'t pick', 'i felt grossed out by the hospital food',
   'my mom envies her neighbor\'s garden', 'which is better, pizza or tacos', 'my son is jealous of the new baby',
  ]),
+ # v35 live chat (2026-11-03): sad news said casually read as joy and closeness ("only like two more sunday dinners.
+ # i cried in the supply closet" -> joy, no sadness), so a brother's move stayed a happy subject. Losses, goodbyes and
+ # crying, with the "lol", "honestly" and "kinda sucks" of texting. Softer than grief; the person is sad, not in danger.
+ 'casual_sadness': (T((.6,-.35,.85,.3,.25,0,.45,.15,0)), [
+  'honestly not great. i cried in my car before work', 'lol i cried at the airport like a baby when she left',
+  'my best friend is moving across the country and it kinda sucks ngl', 'i\'m trying to be happy for her but i\'m gonna miss her so much',
+  'haha yeah i\'m fine. just really sad about it', 'only three more weeks with my roommate before she moves out. it sucks',
+  'not gonna lie i teared up packing his room', 'i keep pretending it\'s fine but i\'m kind of heartbroken',
+  'we had our last practice together today. weird and sad', 'my sister moved away this morning, house is so quiet now',
+  'ok so i cried in the bathroom at work again lol', 'it\'s just sad. i knew it was coming but still',
+  'my grandparents are selling the farm and i\'m kinda wrecked about it', 'i miss how things used to be with my dad tbh',
+  'cried a little when i saw his empty desk', 'last sunday dinner with everyone before they move. trying not to think about it',
+  'yeah it\'s whatever. it just hurts a bit', 'honestly dreading the goodbye', 'thanks. i\'m just sad, that\'s all',
+  'my kid left for college and i sat in her room for an hour', 'i know it\'s good for him but i\'m going to miss him like crazy',
+  'lol i\'m fine i\'m fine. i\'m not fine. my best friend is leaving', 'we used to talk every day and now it\'s like once a month',
+  'kind of a sad night, ate dinner alone for the first time in years', 'my old dog is slowing down and it makes me so sad',
+ ]),
  'style_feedback_negative': (T((.75,-.4,.85,.7,.3,0,.15,.25,-.6)), [
   'that sounded really scripted', 'you sound like a customer service rep', 'too formal, loosen up', 'that was way too long',
   'you\'re overexplaining', 'stop being so clinical', 'that felt fake', 'you keep repeating yourself', 'that was a canned answer',
@@ -256,6 +273,11 @@ HOLDOUT = [
  ('awe','imagine how many stars there are that nobody will ever see'), ('awe_report','the night sky out here is unbelievable'),
  ('style_feedback_negative','you sound like a robot reading a script'),
  ('return_repeat','did i mention i used to fish every sunday'),
+ # The v35 live-chat messages that were misread, never used for fitting.
+ ('casual_sadness','not great honestly. that means only like two more sunday dinners. i cried in the supply closet for a minute which was embarrassing'),
+ ('casual_sadness','my brother is moving to denver next month and i\'m trying to be happy for him but it kinda sucks'),
+ ('casual_sadness','not a shock, i knew it was coming. just quiet. ate dinner alone on the couch tonight'),
+ ('casual_sadness','lol i cried at my desk today, my coworker is retiring'),
 ]
 
 def rows():

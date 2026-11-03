@@ -314,6 +314,42 @@ class FullRedTeamFixes(unittest.TestCase):
         model._note_feelings('he hates mondays', low, sad, T0 + 7200)  # an hour later, "he" is no longer Eli
         self.assertEqual(model.data['topic_feelings']['eli']['times'], 2)
 
+    SLIP_HISTORY = [{'role': 'user', 'content': 'she knocked my coffee off the counter this morning'},
+                    {'role': 'assistant', 'content': "Hope Biscuit didn't knock over your coffee this morning!"}]
+
+    def test_a_slip_is_owned_not_joked_away(self):
+        text = 'uh she did though, that was the whole point haha. were you even reading'
+        self.assertTrue(cc.covered_slip(text, 'Yeah, I was reading. Just kidding! Biscuit is a boss.', self.SLIP_HISTORY))
+        self.assertFalse(cc.covered_slip(text, 'Oh, you said that. I mixed it up. Classic Biscuit.', self.SLIP_HISTORY))
+        self.assertFalse(cc.covered_slip('lol just kidding', 'Ha, okay.', self.SLIP_HISTORY))  # no challenge
+        from response_monitor import fallback
+        turn, names = monitor_turn(text, self.SLIP_HISTORY)
+        issues = issues_for('Yeah, I was reading. Just kidding!', text, self.SLIP_HISTORY)
+        self.assertIn('mixed that up', fallback(turn, names, issues))
+
+    def test_too_much_gets_a_clear_no(self):
+        for text in ("i mean you're saying it's heavy. so i'm kind of a lot?", 'pulled back how? like i\'m too much?',
+                     'am i annoying you', 'do you ever get tired of people dumping their day on you'):
+            self.assertTrue(cc.too_much_question(text), text)
+        for text in ("i'm a lot better today", 'my boss is too much', "i'm a lot more relaxed"):
+            self.assertFalse(cc.too_much_question(text), text)
+        text = "so i'm kind of a lot?"
+        self.assertTrue(cc.left_them_wondering(text, "I'm sorry that landed that way. It's that everything feels like a lot to hold."))
+        self.assertTrue(cc.left_them_wondering(text, 'No, but it does feel heavy sometimes.'))
+        self.assertFalse(cc.left_them_wondering(text, "No, you're not too much. I like hearing about your days."))
+
+    def test_shipped_heads_attach_and_fall_back(self):
+        import semantic_interpreter as si
+        from torch import nn
+        interp = SimpleNamespace()
+        self.assertIsNone(si.attach_meaning_heads(interp, Path('missing-heads.pth')))
+        self.assertIsNone(si.meaning_heads_for(interp, 'hi', torch.zeros(3)))  # no heads: the checkpoint's own are used
+        if si.HEADS_FILE.exists():
+            self.assertEqual(si.attach_meaning_heads(interp), torch.load(si.HEADS_FILE, weights_only=True)['version'])
+            core, extended, _ = interp._meaning_heads
+            self.assertIsInstance(core, nn.Sequential)
+            self.assertFalse(any(p.requires_grad for p in core.parameters()))
+
     def test_remembering_what_the_profile_holds_is_not_invented(self):
         user = {'name': 'Dana', 'occupation': 'nurse'}
         text = 'do you remember my name and what I do?'

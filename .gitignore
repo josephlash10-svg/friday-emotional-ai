@@ -4,6 +4,7 @@
 state/
 *.pth
 !release/friday-base.pth
+!release/appraisal-heads.pth
 
 # ── Large third-party files: fetched by scripts/download_models.py ──────────
 data/models/

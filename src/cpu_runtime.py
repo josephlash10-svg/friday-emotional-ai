@@ -472,6 +472,12 @@ class NativeLanguage:
                 tone=[t for t in (tone or []) if 'do not interrogate' not in t]  # here the one question is the reply
             tone=(tone or [])+unclear
             if tone:facts['how_this_message_reads_(estimate)']=tone
+            if cc.SLIP_CHALLENGE.search(turn.text.replace('’',"'")) and history_rows:
+                facts['they_say_you_misread_them']=('look at what they actually said before. If you got it wrong, own it in a few plain words ("Oh, I mixed that up") '
+                    'and answer what they said. Do not say you were kidding, and do not insist you meant something else')
+            if cc.too_much_question(turn.text):
+                facts['they_wonder_if_they_are_too_much']=('they are asking whether they are too much for you. Start with a clear, warm no: you like hearing about '
+                    'their days, the hard parts too, and talking with them does not tire you. Do not describe their sharing as heavy or a lot to hold')
             if cc.addressed_by_name(turn.text):
                 facts['your_name_in_their_message']=('they used your name, Friday, to talk to you; in this message "friday" means you, not the day of the week. '
                                                      'Do not say it back to them as if it were their name')

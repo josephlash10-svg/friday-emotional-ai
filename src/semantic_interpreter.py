@@ -1,5 +1,6 @@
 """Trained event classification over frozen contextual language features."""
 import re
+from pathlib import Path
 import torch
 from torch import nn
 from conversation_evidence import declarations,relationship,correction_topics,reported_speech,belief_revision,interpersonal_report
@@ -9,6 +10,41 @@ LABELS=(('ordinary','none',0),('correction','intent',0),('correction','answer',-
         ('correction','external_fact',0),('feedback','intent',.8),('feedback','answer',.8),
         ('feedback','answer',-.8),('introduction','identity',0),('relationship','relationship',.3),
         ('preference','preference',0),('self_question','identity',0))
+
+# v35 (2026-11-03): the own-event heads read the frozen language model's last hidden state, which missed sad news said
+# casually: in the live chat "only like two more sunday dinners. i cried in the supply closet" read as joy and closeness.
+# Heads trained on that state plus the MiniLM sentence vector (src/train_meaning_appraisal.py) read it as sad, and fit
+# the held-out natural, formal and extended sets better. They ship as release/appraisal-heads.pth and are kept off the
+# module tree, so checkpoints (which hold someone's memories) are unchanged; without the file or the MiniLM model,
+# Friday uses the heads in its checkpoint.
+MEANING_SCALE=4.  # the MiniLM vector is unit length; the layer-normed LM features have unit variance per dimension
+HEADS_FILE=Path(__file__).resolve().parents[1]/'release/appraisal-heads.pth'
+
+def meaning_head_modules(width):
+    return (nn.Sequential(nn.Linear(width,64),nn.Tanh(),nn.Linear(64,9)),nn.Sequential(nn.Linear(width,64),nn.Tanh(),nn.Linear(64,4)))
+
+def combined_features(features,vector):
+    return torch.cat((features,MEANING_SCALE*vector.to(features.dtype)))
+
+def attach_meaning_heads(interpreter,path=HEADS_FILE):
+    """Load the shipped heads onto the interpreter (as a plain attribute). Returns the version or None."""
+    import os
+    if os.environ.get('FRIDAY_MEANING','').lower()=='off' or not Path(path).exists():return None
+    saved=torch.load(path,map_location='cpu',weights_only=True)
+    core,extended=meaning_head_modules(saved['width'])
+    core.load_state_dict(saved['core']);extended.load_state_dict(saved['extended'])
+    core.eval();extended.eval();core.requires_grad_(False);extended.requires_grad_(False)
+    object.__setattr__(interpreter,'_meaning_heads',(core,extended,saved['version']))
+    return saved['version']
+
+def meaning_heads_for(interpreter,text,features):
+    """(core head, extended head, combined features) when the shipped heads and a MiniLM vector are both available."""
+    heads=getattr(interpreter,'_meaning_heads',None)
+    if heads is None:return None
+    import meaning_recall
+    vectors=meaning_recall.index().embed([text])
+    if vectors is None:return None
+    return heads[0],heads[1],combined_features(features,vectors[0])
 
 class SemanticInterpreter(nn.Module):
     def __init__(self,width,hidden=96):
@@ -82,7 +118,15 @@ class SemanticInterpreter(nn.Module):
                 'evidence':text[:400],'summary':text[:160],'lesson':lesson,'attribute':attribute,'value':value,
                 'interpreter':'trained_semantic_head','memory_support':memory_support,'scope_confidence':scope_confidence,
                 '_semantic_key':latent.tolist(),'_semantic_class':index}
-        if hasattr(self,'event_head') and bool(self.event_trained):
+        meaning=meaning_heads_for(self,text,features) if hasattr(self,'event_head') and bool(self.event_trained) else None
+        if meaning is not None and self.extended:
+            core_head,extended_head,both=meaning
+            numbers=core_head(both).sigmoid();numbers[[1,5,8]]=2*numbers[[1,5,8]]-1
+            extra=extended_head(both).sigmoid()
+            numbers[0]=torch.maximum(numbers[0],.7*extra.max())
+            result['_own_event']=dict(zip(EVENT_FIELDS+EXTENDED_FIELDS,torch.cat((numbers,extra)).tolist()))
+            result['appraisal_features']='language_model+meaning'
+        elif hasattr(self,'event_head') and bool(self.event_trained):
             numbers=self.event_head(features).sigmoid()
             numbers[[1,5,8]]=2*numbers[[1,5,8]]-1
             if self.extended:

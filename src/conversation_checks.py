@@ -516,6 +516,37 @@ def invented_mistake(text, reply, history):
         return True
     return bool(correct_arithmetic_answers(list(history)[-2:]))  # "wrong, it's 124" after a correct 144
 
+# --- v35 live chat: a real slip covered up instead of owned ------------------------------------------------------------
+# "she knocked my coffee off the counter" -> "Hope Biscuit didn't knock over your coffee!" -> "uh she did though... were you
+# even reading" -> "Yeah, I was reading. Just kidding!"; "you mean rufus? ..." -> "No, I meant the puppy".
+SLIP_CHALLENGE = re.compile(r"(?i)(?<!\w)(?:were you (?:even |actually )?(?:reading|listening|paying attention)|did you (?:even )?read (?:that|what i)|"
+                            r"that was the (?:whole )?point|(?:that'?s|that is) not what i (?:said|meant)|i (?:just )?said\b|you mean \w+\?|"
+                            r"you(?:'re| are) (?:a little |kinda |kind of )?(?:scrambled|confused|mixed up)|you mixed (?:that|them|it) up|"
+                            r"(?:uh|um|no),? (?:she|he|it|they|i) (?:did|does|is|was|do|didn'?t|isn'?t|wasn'?t)\b)")
+JOKE_DEFLECTION = re.compile(r"(?i)(?<!\w)(?:just kidding|j/?k\b|i was (?:just )?(?:kidding|joking|teasing|testing you|messing with you)|"
+                             r"just (?:testing|checking) (?:you|if)|i knew that\b|that'?s what i meant)")
+
+def covered_slip(text, reply, history=()):
+    """They pointed out that Friday misread them, and the reply passes it off as a joke."""
+    if not any(r['role'] == 'assistant' for r in (history or ())):
+        return False
+    return bool(SLIP_CHALLENGE.search(_clean(text)) and JOKE_DEFLECTION.search(_clean(reply)))
+
+# --- v35 live chat: "so i'm kind of a lot?" got "it's that I'm just a listener, so everything feels like a lot to hold" ----
+TOO_MUCH = re.compile(r"(?i)(?<!\w)(?:(?:am i|i'?m|i am) (?:\w+ ){0,2}?(?:too much|a lot(?!\s+(?:better|more|less|worse|happier|calmer|of|on|going))|annoying(?: you)?|a burden|exhausting|clingy|needy|boring you)\b|"
+                      r"do you (?:ever )?(?:get tired of (?:me|people|hearing|listening|this)|hate talking to me|mind (?:me|all this))|"
+                      r"(?:you'?re|you are) sick of me|i talk (?:about myself )?too much)")
+REASSURED = re.compile(r"(?i)(?:^\W*(?:no+|nope|not at all|of course not|never|nah)\b|you(?:'re| are) not (?:too much|a lot|annoying|a burden|boring)|"
+                       r"i (?:don'?t|do not|never) (?:get tired|mind)|not (?:too much|a burden) at all)")
+BURDEN_WORDS = re.compile(r"(?i)(?:feels? (?:a bit |kind of |really |so )?heavy|a lot to (?:hold|carry|take)|holding (?:a lot|on)|bucket|dumping|drain(?:ing|ed)?|exhaust(?:ing|ed)|too much for me)")
+
+def too_much_question(text):
+    return bool(TOO_MUCH.search(_clean(text)))
+
+def left_them_wondering(text, reply):
+    """They asked whether they're too much for Friday, and the reply has no clear no, or calls their sharing heavy."""
+    return too_much_question(text) and (not REASSURED.search(_clean(reply)) or bool(BURDEN_WORDS.search(_clean(reply))))
+
 # --- "Did you forget?" / "you promised" are accusations too [n25] ------------------------------------------------------
 PROMISE_ACCUSATION = re.compile(r"(?i)(?<!\w)(?:you promised|did you forget|you (?:said|told me) you(?:'d| would) (?:remind|text|tell|call|check)|you were supposed to)(?!\w)")
 
