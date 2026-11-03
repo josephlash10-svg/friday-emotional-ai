@@ -554,7 +554,19 @@ def repeated_openers_closers(history, window=4):
     for reply in replies:
         for item in {_opener(reply), _closer(reply)} - {''}:
             seen[item] = seen.get(item, 0) + 1
-    return sorted(item for item, count in seen.items() if count >= 2)
+    repeated = sorted(item for item, count in seen.items() if count >= 2)
+    # v35 targeted runs: "That's a", "That sounds" and "That's really" are different two-word openers, but together they
+    # started 55% of replies. The same first word twice in the last three replies counts too.
+    firsts = [_first_word(reply) for reply in replies[-3:]]
+    for word in sorted(set(firsts) - {''}):
+        if firsts.count(word) >= 2:
+            repeated.append(f'{word}... (as the first word)')
+    return repeated
+
+def _first_word(reply):
+    match = re.match(r"\W*([A-Za-z']+)", _clean(reply))
+    word = match.group(1).lower() if match else ''
+    return 'that' if word in ('that', "that's") else word if word in ('i', "i'm", 'yeah', 'oh', 'honestly', 'wow', 'it', "it's") else ''
 
 def vary_opener_closer(reply, history, window=3):
     """Drop a stock opener ('Honestly,') or closing line ('You've got this.') Friday just used, when the reply stands without it."""

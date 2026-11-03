@@ -177,6 +177,11 @@ class Rhythm(unittest.TestCase):
                    {'role': 'assistant', 'content': 'That sounds hard. Want to talk?'}]
         self.assertIn('that sounds', cc.repeated_openers_closers(history))
 
+    def test_the_same_first_word_is_tracked(self):
+        history = [{'role': 'assistant', 'content': "That's a lot to carry."}, {'role': 'user', 'content': 'x'},
+                   {'role': 'assistant', 'content': 'That sounds exhausting.'}]
+        self.assertIn('that... (as the first word)', cc.repeated_openers_closers(history))
+
 
 class TopicAnticipationInTheTurn(unittest.TestCase):
     def test_the_starting_mood_rises_for_a_returning_subject(self):
