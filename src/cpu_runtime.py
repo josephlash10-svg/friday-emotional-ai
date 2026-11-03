@@ -186,14 +186,26 @@ def trim_owned_working_set(pid):
 
 # The settings every release was tested with. They used to live only in the maintainer's private, git-ignored
 # state/native-language.json, so a fresh download ran with a 1024-token window and the reply checks off (found 2026-10-29).
-DEFAULT_OPTIONS={'context':3072,'natural_replies':True,'validate_replies':True,'repack':True,'batch':256,'ubatch':128,'trim_after_load':True}
+DEFAULT_OPTIONS={'context':3072,'natural_replies':True,'validate_replies':True,'repack':True,'batch':512,'ubatch':512,'trim_after_load':True}
 # The voice prompt plus a turn's private notes take about 1,900 tokens; below this the newest message alone overflows.
 MIN_NATURAL_CONTEXT=3072
 
+def default_threads(cores=None):
+    """(writing threads, prompt-reading threads). Reading the prompt is about 80% of a reply and scales with cores;
+    writing is limited by memory speed. On the 10-core Snapdragon X, llama-bench read 71.5 tokens/s with 4 threads
+    and a 128 batch, 106.5 with 8 and 512, and wrote no slower (2026-11-03). Two cores stay free for everything else."""
+    cores=cores or os.cpu_count() or 4
+    spare=max(1,cores-2)
+    return min(6,spare),min(8,spare)
+
 class NativeLanguage:
-    def __init__(self,model=None,runtime=DEFAULT_RUNTIME,threads=4,context=None,emotion_names=()):
+    def __init__(self,model=None,runtime=DEFAULT_RUNTIME,threads=None,context=None,emotion_names=()):
         configuration=ROOT/'state/native-language.json'
         options={**DEFAULT_OPTIONS,**(json.loads(configuration.read_text(encoding='utf-8')) if configuration.exists() else {})}
+        auto_threads,auto_batch_threads=default_threads()
+        # A thread count in state/native-language.json wins, then the caller's, then the automatic choice.
+        threads=int(options.get('threads') or threads or auto_threads)
+        batch_threads=int(options.get('batch_threads') or max(threads,auto_batch_threads))
         model=model or ROOT/options.get('model',str(DEFAULT_MODEL))
         context=context or options['context']
         self.natural_replies=bool(options['natural_replies'])
@@ -212,7 +224,7 @@ class NativeLanguage:
         self.log=self.log_path.open('w',encoding='utf-8')
         flags=subprocess.CREATE_NO_WINDOW if os.name=='nt' else 0
         command=[str(self.runtime),'-m',str(self.model),'--host','127.0.0.1','--port',str(port),
-                 '-t',str(threads),'-tb',str(threads),'-c',str(context*2),'-np','2','-ngl','0','-b',str(options.get('batch',256)),'-ub',str(options.get('ubatch',128)),
+                 '-t',str(threads),'-tb',str(batch_threads),'-c',str(context*2),'-np','2','-ngl','0','-b',str(options['batch']),'-ub',str(options['ubatch']),
                  '--poll','0','--reasoning','off','--jinja','--no-webui']
         if not options.get('repack',True):command.append('--no-repack')
         # The server only listens on 127.0.0.1, but it allows any origin, so a web page open in the browser

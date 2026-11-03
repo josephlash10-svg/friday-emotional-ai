@@ -46,7 +46,7 @@ def main():
     hf_logging.set_verbosity_error()
     import model
     soul.reach(.5, 'restoring emotions and memories')
-    sys.argv = [sys.argv[0], '--cpu-chat', '--speak-first', '--threads', '4', '--native-threads', '4'] + sys.argv[1:]
+    sys.argv = [sys.argv[0], '--cpu-chat', '--speak-first', '--threads', '4'] + sys.argv[1:]
     model.main(ui={'soul': soul})
 
 if __name__ == '__main__':

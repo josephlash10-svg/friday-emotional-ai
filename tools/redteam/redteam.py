@@ -60,7 +60,7 @@ def main():
  agent,_=load_checkpoint(checkpoint);agent.eval()
  development=copy.deepcopy(agent.development.state_dict())
  education=copy.deepcopy(agent.experience.data.get('education'))
- kwargs={'threads':4,'context':args.context,'emotion_names':EMOTIONS}
+ kwargs={'context':args.context,'emotion_names':EMOTIONS}  # threads: as shipped (core count, or state/native-language.json)
  if args.model:kwargs['model']=args.model.resolve()
  native=NativeLanguage(**kwargs);trials=[];start=time.perf_counter()
  cases=json.loads(args.cases.read_text(encoding='utf-8')) if args.cases else CASES
