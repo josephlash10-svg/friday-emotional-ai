@@ -15,7 +15,7 @@ Tested on Windows 11 (ARM64 Snapdragon X, 16 GB RAM), CPU only, Python 3.11.
 ```powershell
 python -m venv venv
 .\venv\Scripts\python.exe -m pip install -r requirements.txt
-.\venv\Scripts\python.exe scripts\download_models.py   # ~3 GB: Qwen3.5-4B, SmolLM2-135M, llama.cpp (see THIRD_PARTY_NOTICES.md)
+.\venv\Scripts\python.exe scripts\download_models.py   # ~3 GB: Qwen3.5-4B, SmolLM2-135M, all-MiniLM-L6-v2, llama.cpp (see THIRD_PARTY_NOTICES.md)
 ```
 Then double-click `RUN.bat`. On first run Friday starts from `release/friday-base.pth` with an empty memory. Its memories of you
 are then kept in `state/`, which is git-ignored and should never be uploaded.
@@ -74,7 +74,7 @@ mood; long-term memory is kept) · `:quit`
 | `state/` | **Private, git-ignored.** `checkpoints/v14-language.pth` (Friday's weights and its memories of you), `native-language.json` (language model settings), `logs/` (chat transcripts) |
 | `release/` | `friday-base.pth`: the clean starting checkpoint for a fresh copy (no memories) |
 | `scripts/` | `download_models.py`: fetches and verifies the models and llama.cpp |
-| `data/models/` | `qwen3.5-4b-gguf` (writer) and `smollm2-135m-instruct` (frozen meaning features) |
+| `data/models/` | `qwen3.5-4b-gguf` (writer), `smollm2-135m-instruct` (frozen meaning features) and `all-minilm-l6-v2` (recalling memories by meaning) |
 | `data/training/` | Training and validation sets for the small trained heads |
 | `tools/redteam/` | Red-team harness, 54 test personas (`persona_cases.py`, `persona_cases_v2.py`), scorer and results |
 | `docs/` | Blueprints (`V14 Emotional Hybrid Blueprint.docx`, earlier ones in `reference/`) and design notes |
@@ -104,7 +104,9 @@ mood; long-term memory is kept) · `:quit`
 v33 gives Friday a memory that lasts across days and a sense of time: it knows when you last talked, what you told it on
 which day, and whether the thing you had coming up has happened yet. See [`docs/v33-memory-and-time.md`](docs/v33-memory-and-time.md)
 for what changed and how it was tested (including a ten-day simulated run), and [`docs/v33-full-redteam.md`](docs/v33-full-redteam.md)
-for the latest full red-team (300 turns, 54 people, every reply read). Earlier rounds: `docs/v31-full-redteam.md`,
+for the latest full red-team (300 turns, 54 people, every reply read). Since v33, Friday also recalls what you told it by meaning, not
+just by matching words ([`docs/m1-recall-by-meaning.md`](docs/m1-recall-by-meaning.md)), and [`verifier/`](verifier/README.md) holds the
+first stage of a verifier that will judge which replies are good enough to learn from. Earlier rounds: `docs/v31-full-redteam.md`,
 `docs/v31-safety-and-bugs.md`, `docs/v30-full-redteam.md` and `docs/v29-install-and-persona-redteam.md`. Codex's 2026-10-06/07 work (v1–v27) is
 summarized in `docs/coherent-emotional-agent.md`; the full experiment history is kept locally and is not in this repository.
 

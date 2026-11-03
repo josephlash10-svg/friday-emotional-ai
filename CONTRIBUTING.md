@@ -21,7 +21,7 @@ python -m venv venv
 .\venv\Scripts\python.exe scripts\download_models.py   # ~3 GB, one time
 ```
 
-The `download_models.py` step fetches Qwen3.5-4B, SmolLM2-135M and llama.cpp. You need it to run Friday or the red-team, but **not** to run the logic tests below.
+The `download_models.py` step fetches Qwen3.5-4B, SmolLM2-135M, all-MiniLM-L6-v2 and llama.cpp. You need it to run Friday or the red-team, but **not** to run the logic tests below.
 
 ## Running the tests
 
@@ -35,14 +35,20 @@ The same suite runs automatically on every pull request (GitHub Actions, Windows
 
 ## Running the red-team
 
-The red-team runs real conversations through the 4B model, so it needs the models downloaded, and it's slow on a CPU (budget ~15 seconds a turn). Run the shipping context of 2048:
+The red-team runs real conversations through the 4B model, so it needs the models downloaded, and it's slow on a CPU (budget ~15 seconds a turn). Run the shipping context of 3072 (the voice prompt plus a reply's notes no longer fit in 2048):
 
 ```powershell
-.\venv\Scripts\python.exe tools\redteam\redteam.py --project . --output work\myrun --cases tools\redteam\persona-cases-v2.json --context 2048 --no-checkpoints
+.\venv\Scripts\python.exe tools\redteam\redteam.py --project . --output work\myrun --cases tools\redteam\persona-cases-v2.json --context 3072 --no-checkpoints
 .\venv\Scripts\python.exe tools\redteam\score_run.py work\myrun tools\redteam\checks-v2.json
 ```
 
 The run never touches your real memories in `state/` — it uses a fresh checkpoint each time.
+
+To check memory recall without the slow model, run `tools\recall_test.py`: a made-up person's five weeks of messages, 30 questions
+about things said weeks earlier, and 20 small-talk messages that shouldn't recall anything (it needs `all-MiniLM-L6-v2`).
+
+Another way to help: **label replies for the verifier** (`verifier/README.md`). Each label is one key for a good reply; the verifier
+can only be trusted as far as people agree with it.
 
 ## Adding a persona
 

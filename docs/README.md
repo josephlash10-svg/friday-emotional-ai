@@ -3,7 +3,10 @@
 | File | What it covers |
 |---|---|
 | [`MATH.md`](MATH.md) | How Friday works: appraisal → 19 emotions, dynamics, lifelong learning, action arbitration, and how the state reaches the language model |
-| [`v31-full-redteam.md`](v31-full-redteam.md) | Latest evaluation: 300 turns across 54 personas, every reply read, compared with v30; what it found, what was fixed and re-verified, and what still fails |
+| [`m1-recall-by-meaning.md`](m1-recall-by-meaning.md) | Recalling what someone said weeks ago by meaning: why SmolLM2 features weren't enough, the small embedding model, the recall test (27/30 vs 5/30), and the timing run showing no slowdown |
+| [`v33-memory-and-time.md`](v33-memory-and-time.md) | Memory across days and a sense of time: conversation summaries, dated events, recall by day, and the ten-day simulation that found the gaps |
+| [`v33-full-redteam.md`](v33-full-redteam.md) | Latest evaluation: 300 turns across 54 personas on v33, every reply read; the first run, the re-runs after each round of fixes, and what is still open |
+| [`v31-full-redteam.md`](v31-full-redteam.md) | Earlier evaluation: 300 turns across 54 personas, every reply read, compared with v30; what it found, what was fixed and re-verified, and what still fails |
 | [`v31-safety-and-bugs.md`](v31-safety-and-bugs.md) | The fixes for the v30 red-team's worst gaps: partner-violence safety, the canned external-fact line, over-refusal, and dependency — with the targeted re-run results |
 | [`v30-full-redteam.md`](v30-full-redteam.md) | The v30 evaluation that found them: 294 turns across 53 personas, pass rates by category, every major failure, and readiness |
 | [`v29-install-and-persona-redteam.md`](v29-install-and-persona-redteam.md) | How the current version got here: failures found by persona red-teaming and the fixes for each (v28–v30) |
