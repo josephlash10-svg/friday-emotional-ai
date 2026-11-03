@@ -82,8 +82,9 @@ def main():
      continue
     began=time.perf_counter()
     try:
+     recall=experience_pipeline.start_recall(agent,text) if hasattr(experience_pipeline,'start_recall') else None  # as in the chat: embedded while the model interprets
      frame=experience_pipeline.interpret_turn(agent,native,text) if hasattr(experience_pipeline,'interpret_turn') else agent.interpreter.interpret(agent.decoder,text,agent.experience)
-     state,needs,prepared=prepare_experience(agent,state,text,frame,needs)
+     state,needs,prepared=prepare_experience(agent,state,text,frame,needs,recall=recall)
      with torch.no_grad():
       turn=agent(torch.tensor(agent.vocab.encode(text)[-agent.cfg.max_tokens:]),state,needs,text=text,history=agent.chat_history,event=prepared['event'],experience=prepared)
      prepared['self_reply']=explain_experience(agent,turn);action=ACTIONS[turn.policy.argmax().item()]
