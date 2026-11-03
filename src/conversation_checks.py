@@ -29,6 +29,18 @@ def hard_subject_as_good_news(reply, topic_history):
     hard = {emotional_life.WORDS[n] for n in emotional_life.HARD}
     return bool(GOOD_NEWS.search(_clean(reply)) and any(h.get('it_usually_brings') in hard for h in topic_history or []))
 
+# News with no tone yet: "hey. eli called on my lunch break" -> "Oh, that's great news!" (v35 replay; he was calling to
+# say he was leaving sooner). Only short messages, and only when nothing in them says how it went.
+BARE_NEWS = re.compile(r"(?i)\b(?:called|texted|messaged|emailed|came (?:by|over)|stopped by|showed up|wrote back|reached out|got back to me)\b")
+NEWS_TONE = re.compile(r"(?i)!|:\)|\b(?:great|good|nice|awesome|amazing|excit\w*|happy|yay|finally|love\w*|glad|thrilled|best|bad|awful|"
+                       r"terrible|sad|ugh|upset|worried|scared|sucks?|hate|weird|again)\b")
+
+def bare_news_as_good(text, reply):
+    """A short bit of news that doesn't say how it went, greeted as good news."""
+    clean = _clean(text)
+    return bool(BARE_NEWS.search(clean) and not NEWS_TONE.search(clean) and len(clean.split()) <= 12
+                and GOOD_NEWS.search(_clean(reply)))
+
 def guessed_unnamed(text, reply, history=()):
     """A reply that reacts to an unnamed thing as good or bad (or claims to know it), when nothing earlier names it.
     Not asking counts too: in the live chat "so it happened" got "So it happened. That can take a while to catch up." """
@@ -524,10 +536,12 @@ SLIP_CHALLENGE = re.compile(r"(?i)(?<!\w)(?:were you (?:even |actually )?(?:read
                             r"you(?:'re| are) (?:a little |kinda |kind of )?(?:scrambled|confused|mixed up)|you mixed (?:that|them|it) up|"
                             r"(?:uh|um|no),? (?:she|he|it|they|i) (?:did|does|is|was|do|didn'?t|isn'?t|wasn'?t)\b)")
 JOKE_DEFLECTION = re.compile(r"(?i)(?<!\w)(?:just kidding|j/?k\b|i was (?:just )?(?:kidding|joking|teasing|testing you|messing with you)|"
-                             r"just (?:testing|checking) (?:you|if)|i knew that\b|that'?s what i meant)")
+                             r"just (?:testing|checking) (?:you|if)|i knew that\b|that'?s what i meant|"
+                             # Denying it is covering it too: "Oh, I was definitely reading. Just got distracted by the coffee story!"
+                             r"i was (?:definitely |totally |actually |too )?(?:reading|listening|paying attention)|\b(?:just |i )got distracted)")
 
 def covered_slip(text, reply, history=()):
-    """They pointed out that Friday misread them, and the reply passes it off as a joke."""
+    """They pointed out that Friday misread them, and the reply passes it off as a joke or denies it."""
     if not any(r['role'] == 'assistant' for r in (history or ())):
         return False
     return bool(SLIP_CHALLENGE.search(_clean(text)) and JOKE_DEFLECTION.search(_clean(reply)))
