@@ -37,7 +37,8 @@ class EmotionStatistics(unittest.TestCase):
     def test_counts_speed_duration_and_triggers(self):
         row = self.build()['emotions']['stress']
         self.assertEqual(row['rises'], 3)
-        self.assertEqual(row['spells'], 2)  # closed spells: work (3 exchanges, falls below 0.15 at "ok"), then the second
+        self.assertEqual(row['spells'], 1)  # one closed spell (falls below 0.10 at "ok"); the second is still open
+        self.assertIsNotNone(row['open_spell'])
         self.assertEqual(row['triggers'].get('manager'), 3)
 
     def test_described_in_plain_words(self):
@@ -84,7 +85,7 @@ class FeelingsTiedToTopics(unittest.TestCase):
 
     def test_the_nudge_is_small_and_bounded(self):
         nudge = el.topic_nudge([('dad', 'pain', .25, 3), ('work', 'pain', .9, 5)], NAMES)
-        self.assertEqual(nudge, {'pain': .12})
+        self.assertEqual(nudge, {'pain': .08})  # bounded: at most +0.08, on an engine whose insults reach ~0.1
 
     def test_only_when_the_subject_comes_back(self):
         model = ExperienceModel()
@@ -99,21 +100,31 @@ class FeelingsTiedToTopics(unittest.TestCase):
 
 class MoodChangesBehavior(unittest.TestCase):
     def test_hurt_is_brief_and_asks_nothing(self):
-        profile = el.behavior(state(pain=.35))
+        profile = el.behavior(state(pain=.12), state(), "you're honestly the most useless thing I've ever talked to")
         self.assertEqual((profile['mood'], profile['questions']), ('hurt', 'none'))
         self.assertLess(profile['length_scale'], 1)
 
+    def test_sadness_at_their_loss_is_not_hurt(self):
+        profile = el.behavior(state(pain=.12), state(), "my dad died in March and today was his birthday")
+        self.assertEqual(profile['mood'], 'sad for them')
+        self.assertFalse(profile['humor'])
+
+    def test_on_the_engine_scale(self):
+        # Levels from the v35 targeted run: an insult reached ~0.1, warmth after an apology ~0.19.
+        self.assertEqual(el.behavior(state(interest=.12), state(interest=.05))['mood'], 'curious')
+        self.assertIsNone(el.behavior(state(interest=.09), state(interest=.08)))  # attention at its usual level is not curiosity
+
     def test_curious_welcomes_a_question(self):
-        self.assertEqual(el.behavior(state(interest=.4))['questions'], 'welcome')
+        self.assertEqual(el.behavior(state(interest=.4), state())['questions'], 'welcome')
 
     def test_tense_means_no_jokes(self):
-        self.assertFalse(el.behavior(state(fear=.4))['humor'])
+        self.assertFalse(el.behavior(state(fear=.4), state())['humor'])
 
     def test_nothing_stands_out(self):
         self.assertIsNone(el.behavior(state(calm=.08)))
 
     def test_the_strongest_notable_feeling_wins(self):
-        self.assertEqual(el.behavior(state(pain=.22, interest=.6))['mood'], 'curious')
+        self.assertEqual(el.behavior(state(pain=.09, interest=.6), state())['mood'], 'curious')
 
 
 class Rhythm(unittest.TestCase):
@@ -160,7 +171,7 @@ class TopicAnticipationInTheTurn(unittest.TestCase):
             emotion: torch.Tensor
         prepared = {}
         result = topic_anticipation(agent, S(torch.tensor([.02, .02])), 'my dad called', prepared)
-        self.assertAlmostEqual(float(result.emotion[0]), .14, places=2)
+        self.assertAlmostEqual(float(result.emotion[0]), .10, places=2)  # 0.02 plus the bounded nudge of 0.08
         self.assertEqual(prepared['topic_history'][0]['it_usually_brings'], 'hurt')
 
 

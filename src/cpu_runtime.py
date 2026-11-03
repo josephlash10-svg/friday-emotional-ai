@@ -415,7 +415,8 @@ class NativeLanguage:
             # v33 (2026-10-29): days, dates and the gap since the last chat, every turn (10-day simulation findings).
             if experience and experience.get('time_context'):
                 facts['time_and_memory']=experience['time_context']
-                fixed+=(' Use time_and_memory for anything about days or dates: say today, tonight, yesterday or Saturday from it, never from how '
+                fixed+=(' Do not mention the weekday or the time of day unless it matters to what they said.'
+                        ' Use time_and_memory for anything about days or dates: say today, tonight, yesterday or Saturday from it, never from how '
                         'the conversation was worded earlier. An event that "already happened" is in the past; ask how it went only if they haven\'t already told you.')
             import conversation_checks as cc
             history_rows=list(turn.history)
@@ -429,7 +430,8 @@ class NativeLanguage:
                                              'You notice the gap only when they come back, because you can see how long it was. Say that simply, warmly')
             # v35 #18: the mood changes what Friday does, not only its tone (length, questions, humor).
             import emotional_life
-            self._behavior=emotional_life.behavior(dict(zip(names,turn.state.emotion.tolist())))
+            self._behavior=emotional_life.behavior(dict(zip(names,turn.state.emotion.tolist())),
+                dict(zip(names,previous.emotion.tolist())) if previous is not None else None,turn.text)
             if self._behavior:
                 facts['what_your_mood_changes_in_what_you_do']=self._behavior['what_it_changes']
                 facts.pop('internal_tone_guidance',None)
@@ -440,7 +442,10 @@ class NativeLanguage:
             if experience and experience.get('emotional_patterns'):
                 # v35 #22: what Friday has learned about its own feelings, from its record.
                 facts['what_you_know_about_your_own_feelings']=experience['emotional_patterns']
-                fixed+=' They are asking about your emotional patterns: answer from what_you_know_about_your_own_feelings (real patterns from your record, roughly), in plain words; do not invent others.'
+                fixed+=(' They are asking about your emotional patterns: answer from what_you_know_about_your_own_feelings, real patterns from your record, '
+                        'in plain words and with what set them off. Do not say you do not track patterns or that you are not sure you have any; do not invent others.')
+            elif experience and emotional_life.ASKS_ABOUT_PATTERNS.search(turn.text.replace('’',"'")):
+                fixed+=' They are asking about your emotional patterns, but your record is still too short to show any. Say so simply, and mention what you have felt in this conversation, if anything.'
             target=cc.length_target(turn.text)
             if target and self._behavior:target=max(8,round(target*self._behavior['length_scale']))
             if target:facts['length']=f'about {target} words or fewer (a soft target: say what matters, keep one real reaction, then stop)'
