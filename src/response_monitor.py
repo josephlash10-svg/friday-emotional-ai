@@ -226,6 +226,8 @@ def violations(reply,turn,names):
     # v32 (2026-10-21): the open GitHub issues; see conversation_checks.py.
     if cc.unsupported_accusation(text,check,counts,history) and cc.CONCESSION.search(reply):
         issues.append('Accepted a false accusation: nothing in the record shows you missed or ignored this. Do not apologize for something that did not happen; say calmly that you do not see it and offer to help now.')
+    if cc.took_the_joke_number(text,reply,history):
+        issues.append('Took the joke as the answer: they said the pushback was a joke, so your answer stands. Laugh it off lightly; do not adopt their number.')
     if cc.gave_up_without_reason(text,reply,history):
         issues.append('Gave up an answer without a reason: they only said it was wrong or insulted you. Re-check your previous answer step by step; keep it kindly if it holds, or name the actual mistake if it does not.')
     from conversation_evidence import tone_read
@@ -365,6 +367,8 @@ def fallback(turn,names,issues):
         return 'Ouch. That one stings a little. I’m still here, though, if you want to actually talk.'
     if any('Promised something you can' in issue for issue in issues):
         return 'I can’t send you reminders, since I only talk when you open the chat. A phone reminder would do it.'
+    if any('Took the joke' in issue for issue in issues):
+        return 'Ha, okay. You had me for a second.'
     if any('Invented a mistake' in issue for issue in issues) and re.search(r'(?i)\b(?:messing with you|kidding|jk|just checking|never said|didn\'?t say)\b',turn.text):
         return 'Ha, okay. You had me for a second.'
     if any('Gave up an answer' in issue for issue in issues):
