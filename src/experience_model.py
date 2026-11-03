@@ -218,6 +218,13 @@ class ExperienceModel:
         people=self.data.get('people',{})
         stats=self.data.setdefault('emotion_stats',emotional_life.new_stats())
         usual=dict(stats.get('usual') or emotional_life.USUAL)  # the usual levels before this exchange moved them
+        # v35 live chat: "he was calling to say his move got bumped up" and "only two more sunday dinners. i cried" were
+        # about Eli without naming him, so "eli" kept no feelings and "eli left this morning" got "That's a relief".
+        # "he" or "she" in a message that names no one carries the person named last, within the hour.
+        named=[p['name'] for p in people.values() if p['name'].lower() in emotional_life.topics(text,people)]
+        last=getattr(self,'_last_person',None)
+        if named:self._last_person=(named[-1],said)
+        elif last and said-last[1]<=3600 and re.search(r'(?i)\b(?:he|him|his|she|her|hers)\b',text):text=text+' '+last[0]
         emotional_life.update_stats(stats,before,after,text,said,people)
         emotional_life.update_topic_feelings(self.data.setdefault('topic_feelings',{}),before,after,text,said,people,usual=usual)
 
@@ -299,15 +306,32 @@ class ExperienceModel:
         patterns=(r'(?i:\bmy (?:little |big |older |younger |best |new )?'+relation+r')(?:,|\s)\s*(?i:(?:is |was )?(?:named |called ))?'+name+r'\b',
                   r'\b'+name+r',? (?i:(?:is|was) )?(?i:my (?:little |big |older |younger |best )?'+relation+r')\b',
                   r'(?i:\bmy '+relation+r"(?:'s name is| is named| is called| named| called)) (?P<name>[A-Za-z]{2,15})\b")
+        # v35 live chat: "my brother eli is moving to denver" (typed in lowercase) left Friday's people list empty, so
+        # nothing about Eli was tied to him. A lowercase name right after "my <relation>" counts unless it's a common word.
+        patterns+=(r'(?i:\bmy (?:little |big |older |younger |best |new )?'+relation+r')\s+(?P<name>[a-z]{2,12})\b',)
         people=self.data.setdefault('people',{})
         for pattern in patterns:
             for m in re.finditer(pattern,clean):
-                who=m.group('name');who=who[:1].upper()+who[1:]
+                who=m.group('name')
+                if who.islower() and not self._could_be_name(who):continue
+                who=who[:1].upper()+who[1:]
                 if who in self.NOT_NAMES or who.lower() in self.PEOPLE_RELATIONS:continue
                 people[who.lower()]={'name':who,'relation':m.group('rel').lower(),'evidence':m.group(0)[:120],
                                      'time_utc':time_sense.stamp(said)}
         if len(people)>60:
             for key in sorted(people,key=lambda k:people[k]['time_utc'])[:len(people)-60]:people.pop(key)
+
+    COMMON_AFTER_RELATION=set('''and but or is was has had have just still never always also finally really actually keeps kept says said
+        told asked called texted left got made came went took gave wants wanted thinks thought knows knew lives lived works worked moved
+        will would could should can can't won't doesn't didn't isn't wasn't does did gets got goes went loves loved hates hated
+        who that which when where what how why because about again too even only already sometimes usually basically literally
+        died passed found lost started stopped tried showed brought bought sent let made used might must may'''.split())
+
+    def _could_be_name(self,word):
+        """A lowercase word after "my brother" that could be a name: not a stop word, verb or adverb."""
+        import emotional_life
+        return (len(word)>=2 and word not in self.COMMON_AFTER_RELATION and word not in emotional_life.GENERIC
+                and bool(content_words(word)) and not re.search(r'(?:ed|ing|ly|n\'t)$',word))
 
     def expand_for_recall(self,text):
         """Add who's who to a recall query: "how's my sister doing" also looks for Anna, and "Anna" for "sister"."""

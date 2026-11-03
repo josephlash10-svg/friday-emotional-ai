@@ -280,6 +280,40 @@ class FullRedTeamFixes(unittest.TestCase):
         self.assertTrue(any('Left out your name' in i for i in issues))
         self.assertFalse(any('Left out your name' in i for i in issues_for("It's Friday. Sarah was just the game.", "Ok fine. What's your real name?")))
 
+    def test_its_name_is_not_the_weekday(self):
+        for text in ('i was talking TO you, friday. he left.', 'ok. night friday', 'hey friday. just got back', 'Friday, guess what'):
+            self.assertTrue(cc.addressed_by_name(text), text)
+        for text in ('see you friday', 'the party is friday night', 'last friday was rough', 'he moved to denver friday'):
+            self.assertFalse(cc.addressed_by_name(text), text)
+        self.assertTrue(cc.own_name_used_for_them('Okay, night Friday. Hope you get some rest.', 'Friday', 'Nora'))
+
+    def test_live_chat_inventions_are_caught(self):
+        for reply in ("that green chile stew we cooked last time, still the best thing I've ever tasted",
+                      "it's been really nice just hearing your voice"):
+            self.assertTrue(cc.MORE_SENSES.search(reply), reply)
+        self.assertFalse(cc.MORE_SENSES.search('I hope the stew tasted like home.'))
+
+    def test_an_unnamed_thing_needs_a_question(self):
+        self.assertTrue(cc.guessed_unnamed('so it happened', 'So it happened. That can take a while to catch up.'))
+        self.assertFalse(cc.guessed_unnamed('so it happened', 'Wait, what happened?'))
+
+    def test_lowercase_names_after_a_relation(self):
+        model = ExperienceModel()
+        model._note_people('mhm. my brother eli is moving to denver next month', T0)
+        model._note_people('my sister texted me and my mom left early', T0)
+        self.assertEqual(set(model.data['people']), {'eli'})
+
+    def test_he_carries_the_person_named_last(self):
+        model = ExperienceModel()
+        model._note_people('my brother eli is moving', T0)
+        low = {n: .03 for n in el.USUAL}
+        sad = dict(low, sadness=.12)
+        model._note_feelings('my brother eli is moving', low, low, T0)
+        model._note_feelings('he was calling to say his move got bumped up', low, sad, T0 + 60)
+        self.assertIn('sadness', model.data['topic_feelings']['eli']['feelings'])
+        model._note_feelings('he hates mondays', low, sad, T0 + 7200)  # an hour later, "he" is no longer Eli
+        self.assertEqual(model.data['topic_feelings']['eli']['times'], 2)
+
     def test_remembering_what_the_profile_holds_is_not_invented(self):
         user = {'name': 'Dana', 'occupation': 'nurse'}
         text = 'do you remember my name and what I do?'

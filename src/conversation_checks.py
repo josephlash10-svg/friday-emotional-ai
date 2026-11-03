@@ -30,8 +30,9 @@ def hard_subject_as_good_news(reply, topic_history):
     return bool(GOOD_NEWS.search(_clean(reply)) and any(h.get('it_usually_brings') in hard for h in topic_history or []))
 
 def guessed_unnamed(text, reply, history=()):
-    """A reply that reacts to an unnamed thing as good or bad (or claims to know it), when nothing earlier names it."""
-    if not VAGUE_REFERENCE.search(_clean(text)) or not GUESSED.search(_clean(reply)):
+    """A reply that reacts to an unnamed thing as good or bad (or claims to know it), when nothing earlier names it.
+    Not asking counts too: in the live chat "so it happened" got "So it happened. That can take a while to catch up." """
+    if not VAGUE_REFERENCE.search(_clean(text)) or not (GUESSED.search(_clean(reply)) or '?' not in reply):
         return False
     return not any(len(content_words(r['content'])) >= 3 for r in history if r.get('role') == 'user')
 
@@ -119,7 +120,19 @@ def own_name_used_for_them(reply, own_name, user_name):
         return False
     name = re.escape(own_name.lower())
     lower = _clean(reply).lower()
-    return bool(re.search(r',\s*' + name + r'\s*[.!?]', lower) or re.search(r'^(?:hey|hi|hello|thanks|congrats|congratulations)[,!]?\s+' + name + r'(?!\w)', lower))
+    # v35 live chat: "night friday" -> "Okay, night Friday."
+    return bool(re.search(r',\s*' + name + r'\s*[.!?]', lower) or
+                re.search(r'^(?:(?:ok|okay|alright|sure),?\s+)?(?:hey|hi|hello|thanks|congrats|congratulations|night|goodnight|good night|bye|morning|good morning)[,!]?\s+' + name + r'(?!\w)', lower))
+
+def addressed_by_name(text, own_name='Friday'):
+    """They used Friday's name to talk to it. The name is also a weekday: in the live chat "he moved to denver friday"
+    (said to Friday) got "No, Eli didn't leave. He's moving to Denver on Friday." """
+    # Only where it can't be the day: after a greeting or a comma, or alone at the start. "the party is friday" and
+    # "he moved to denver friday" stay ambiguous, so they get no note.
+    name = re.escape(own_name.lower())
+    lower = _clean(text).lower()
+    return bool(re.search(r'(?:^|[.!?]\s+)' + name + r'\s*[,.!?]|,\s*' + name + r'(?!\w)(?!\s+(?:night|morning|afternoon|evening))|'
+                          r'(?<!\w)(?:hey|hi|hello|thanks|thank you|night|goodnight|good night|bye|morning|love you|miss you|ok|okay)\s+' + name + r'(?!\w)(?!\s+(?:night|morning|afternoon|evening))', lower))
 
 # --- 6. False self-blame -------------------------------------------------------------------
 NAME_SELF_BLAME = re.compile(r"(?i)(?<!\w)(?:i must have (?:misremembered|misheard|gotten (?:it|that) (?:wrong|mixed up)|got (?:it|that) (?:wrong|mixed up)|mixed (?:it|that) up)|i (?:got|had) (?:your name|that|it) wrong|my mistake|sorry i got (?:that|it|your name) wrong|i misremembered|my bad|(?:i must have |i )?mixed up (?:the |your )?names?|sorry i mixed (?:that|it) up|names are easy to miss)(?!\w)")
@@ -557,7 +570,9 @@ AFFIRMED_MEMORY = re.compile(r"(?i)^\W*(?:yeah|yes|yep|yup|of course|oh yeah|i d
 MORE_SENSES = re.compile(r"(?i)(?:there(?:'s| is) a (?:little |small )?\w+ outside|outside (?:my|the) window|(?:been|is|keeps?) (?:singing|barking|chirping|raining|snowing|buzzing) (?:all|outside|out there)|"
                          r"the noise gets (?:too )?loud|(?:want|like|need) to (?:just )?sit in the (?:quiet|silence|dark)|"
                          r"(?:through|in) (?:my|the) window|the (?:afternoon|morning|evening) light (?:shifts|comes|falls|changes)|"
-                         r"i (?:just |actually |even |also )*(?:had|have) (?:a |this )?(?:weird |strange |funny |bad )?(?:dream|nightmare)|i (?:dreamed|dreamt))")  # v35 run: "I actually just had a weird dream about a cat"
+                         r"i (?:just |actually |even |also )*(?:had|have) (?:a |this )?(?:weird |strange |funny |bad )?(?:dream|nightmare)|i (?:dreamed|dreamt)|"  # v35 run: "I actually just had a weird dream about a cat"
+                         # v35 live chat: "that green chile stew we cooked last time, still the best thing I've ever tasted"; "hearing your voice"
+                         r"(?<!\w)i(?:'ve| have)? (?:ever )?tasted|(?<!\w)we (?:cooked|baked|ate)(?!\w)|(?:hear|hearing|heard) your voice)")
 # --- v35: saying it doesn't track its feelings when it has a record of them ---------------------------------------------
 NO_PATTERNS = re.compile(r"(?i)\bi (?:don'?t|do not) (?:really |actually )?(?:track|keep track of|notice|have|see) (?:any )?(?:patterns|tendencies)|not sure i have (?:any )?patterns|i (?:don'?t|do not) (?:really )?know (?:exactly )?why i feel")  # p09 in the v33 red-team
 

@@ -472,6 +472,9 @@ class NativeLanguage:
                 tone=[t for t in (tone or []) if 'do not interrogate' not in t]  # here the one question is the reply
             tone=(tone or [])+unclear
             if tone:facts['how_this_message_reads_(estimate)']=tone
+            if cc.addressed_by_name(turn.text):
+                facts['your_name_in_their_message']=('they used your name, Friday, to talk to you; in this message "friday" means you, not the day of the week. '
+                                                     'Do not say it back to them as if it were their name')
             if cc.open_emergency(turn.text,history):
                 facts['medical_emergency']=('they described a medical red flag (like chest pain with a numb arm) and have not said they are getting help. '
                     'Say plainly to call 911 (or local emergency services) now, and that it is not overreacting. Stay warm and brief')
@@ -745,7 +748,8 @@ class NativeLanguage:
             # The opening isn't reviewed like replies, so check the failures openings actually had: claiming time it didn't
             # live through ("sorry I missed you for almost two days"), taking over their event ("I've got a wedding coming
             # up"), senses, and denying memory (v33 reruns).
-            return bool(re.search(r"(?i)(?:i was (?:just )?thinking about|been thinking about|sorry (?:i|for) (?:missed|missing)|i(?:'ve| have) missed you)",text)
+            # v35 live chat: "I was actually thinking about that stew", "I actually just thought about that hug".
+            return bool(re.search(r"(?i)(?:i (?:was |(?:actually |just |really )+)(?:actually |just |really )*(?:thinking|thought) about|been thinking about|sorry (?:i|for) (?:missed|missing)|i(?:'ve| have) missed you)",text)
                         or cc.BETWEEN_CHATS.search(text) or cc.OWN_EVENT.search(text) or cc.MORE_SENSES.search(text) or cc.MEMORY_DENIAL.search(text))
         text=''
         for attempt in range(3):

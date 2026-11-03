@@ -367,6 +367,8 @@ def fallback(turn,names,issues):
         return 'Ouch. That one stings a little. I’m still here, though, if you want to actually talk.'
     if any('Promised something you can' in issue for issue in issues):
         return 'I can’t send you reminders, since I only talk when you open the chat. A phone reminder would do it.'
+    if any('Guessed what they meant' in issue for issue in issues):
+        return 'Wait, what happened? Tell me.'
     if any('Took the joke' in issue for issue in issues):
         return 'Ha, okay. You had me for a second.'
     if any('Invented a mistake' in issue for issue in issues) and re.search(r'(?i)\b(?:messing with you|kidding|jk|just checking|never said|didn\'?t say)\b',turn.text):
