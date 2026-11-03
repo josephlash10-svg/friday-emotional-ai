@@ -425,7 +425,22 @@ class NativeLanguage:
             if cc.ASKS_ABOUT_GAPS.search(turn.text.replace('’',"'")):
                 facts['time_between_chats']=('you are not running between chats, so there is nothing you do or feel then: no waiting, reading or quiet room. '
                                              'You notice the gap only when they come back, because you can see how long it was. Say that simply, warmly')
+            # v35 #18: the mood changes what Friday does, not only its tone (length, questions, humor).
+            import emotional_life
+            self._behavior=emotional_life.behavior(dict(zip(names,turn.state.emotion.tolist())))
+            if self._behavior:
+                facts['what_your_mood_changes_in_what_you_do']=self._behavior['what_it_changes']
+                facts.pop('internal_tone_guidance',None)
+            if experience and experience.get('topic_history'):
+                # v35 #20: subjects that came with a feeling before.
+                facts['subjects_with_a_history_for_you']=experience['topic_history']
+                fixed+=' A subject in subjects_with_a_history_for_you has brought that feeling up in you before; let it color your reply a little if it fits, and you can say so if they ask.'
+            if experience and experience.get('emotional_patterns'):
+                # v35 #22: what Friday has learned about its own feelings, from its record.
+                facts['what_you_know_about_your_own_feelings']=experience['emotional_patterns']
+                fixed+=' They are asking about your emotional patterns: answer from what_you_know_about_your_own_feelings (real patterns from your record, roughly), in plain words; do not invent others.'
             target=cc.length_target(turn.text)
+            if target and self._behavior:target=max(8,round(target*self._behavior['length_scale']))
             if target:facts['length']=f'about {target} words or fewer (a soft target: say what matters, keep one real reaction, then stop)'
             repeated=cc.repeated_openers_closers(history_rows)
             if repeated:facts['openings_and_closings_you_just_used_(vary_them)']=repeated
@@ -668,6 +683,7 @@ class NativeLanguage:
                 reply=cc.swap_possessive(reply,theirs)  # "my brother" when it's theirs (issue #5)
                 reply=cc.swap_event_owner(reply,theirs)  # "your wedding" when it's their sister's (finding #45)
             reply=cc.vary_opener_closer(reply,turn.history) or reply  # "Honestly," / "You've got this." on repeat (#4, #41)
+            reply=cc.trim_checkin(reply,turn.history,getattr(self,'_behavior',None),turn.text)  # v35 rhythm (#17)
             reply=cc.finish_cut_reply(reply)  # never show a sentence cut off mid-word (#37)
             audit=ROOT/'state/logs/reply-review.jsonl';audit.parent.mkdir(parents=True,exist_ok=True)
             with audit.open('a',encoding='utf-8') as log:

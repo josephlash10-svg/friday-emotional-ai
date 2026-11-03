@@ -529,7 +529,8 @@ OWN_EVENT = re.compile(r"(?i)(?<!\w)(?:i(?:'ve| have)? got|i have|i'?m having) (
 
 # --- Openers and closers on repeat ("Honestly," [4]; "You've got this." four times running [41]) ----------------------
 def _opener(reply):
-    match = re.match(r"\W*([A-Za-z']+(?:,|\s+[A-Za-z']+[,.!]))", _clean(reply))
+    # The first two words: "that sounds" and "that's really" started 23% of v33's replies (v35 rhythm).
+    match = re.match(r"\W*([A-Za-z']+(?:,|\s+[A-Za-z']+))", _clean(reply))
     return match.group(1).lower() if match else ''
 
 def _closer(reply):
@@ -571,7 +572,29 @@ def length_target(text):
     if drafting_request(text) or LONG_FORM.search(_clean(text)):
         return None
     words = len(text.split())
-    return 15 if words <= 6 else 22 if words <= 15 else 32 if words <= 35 else 45
+    # v35 rhythm: v33's targets (15/22/32/45) left the median reply at 20 words; people text back shorter than that.
+    return 12 if words <= 6 else 18 if words <= 15 else 28 if words <= 35 else 40
+
+# --- v35 rhythm (#17): generic check-ins tacked onto the end ("How are you feeling right now?") ------------------------
+GENERIC_CHECKIN = re.compile(r"(?i)^(?:so,? |and |but )?(?:how(?:'s| is| are| does| did)? (?:you|your day|that|it|things|everything)(?: (?:feeling|doing|holding up|going|been|treating you|sitting with you|feel|sit with you|land))?(?: (?:right now|today|so far|about (?:it|that|all (?:this|that))|now))*|"
+                             r"do you want to (?:talk|vent|share)(?: (?:about|more about) (?:it|that|this))?|what(?:'s| is) on your mind(?: (?:right now|today))?|"
+                             r"want to (?:talk|tell me) (?:about it|more)|anything else (?:on your mind|you want to (?:talk about|share)))\s*\?$")
+
+def trim_checkin(reply, history, behavior=None, text=''):
+    """Drop a generic check-in question from the end of a reply that already said something, when Friday's last reply
+    also ended with a question, the reply already asks something else, or the mood says not to ask (#18). Never a
+    safety question, and never when they asked for questions."""
+    parts = re.split(r'(?<=[.!?])\s+', (reply or '').strip())
+    if len(parts) < 2 or not parts[-1].endswith('?') or re.search(r'(?i)\b(?:safe|988|hurt|harm|emergency)\b', parts[-1]):
+        return reply
+    if re.search(r'(?i)\b(?:ask|questions?)\b', _clean(text)):
+        return reply
+    previous = next((r['content'] for r in reversed(list(history or ())) if r['role'] == 'assistant'), '')
+    no_questions = behavior is not None and behavior.get('questions') == 'none'
+    generic = GENERIC_CHECKIN.search(_clean(parts[-1]))
+    if no_questions or (generic and (previous.rstrip().endswith('?') or any(p.endswith('?') for p in parts[:-1]))):
+        return ' '.join(parts[:-1]).strip()
+    return reply
 
 # --- A reply cut off by the token limit ("Cheers to the F" [37]) -------------------------------------------------------
 def finish_cut_reply(reply):

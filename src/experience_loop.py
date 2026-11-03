@@ -24,6 +24,26 @@ def start_recall(agent,text):
     if not getattr(experience,'meaning_enabled',False):return None
     return experience.meaning.embed_later(experience.expand_for_recall(text))
 
+def topic_anticipation(agent,state,text,prepared):
+    """#20: a subject that came with a feeling before nudges that feeling up a little before the message is appraised,
+    the way a sore subject puts a person slightly on edge as soon as it comes up. Bounded (at most +0.12), only for a
+    subject coming back (not one already raised in this conversation), and it fades with the normal dynamics."""
+    import emotional_life
+    from dataclasses import replace
+    if not getattr(agent.cfg,'developmental_emotion',False):return state
+    history=agent.experience.topic_history(text,getattr(agent,'chat_history',[]))
+    if not history:return state
+    names=tuple(agent.development.names)
+    nudge=emotional_life.topic_nudge(history,names)
+    if nudge:
+        emotion=state.emotion.clone()
+        for name,amount in nudge.items():
+            index=names.index(name);emotion[index]=min(1.,float(emotion[index])+amount)
+        state=replace(state,emotion=emotion)
+    prepared['topic_history']=[{'subject':subject,'it_usually_brings':emotional_life.WORDS.get(name,name),'times_before':times}
+                               for subject,name,_,times in history]
+    return state
+
 def prepare_experience(agent,state,text,frame,needs,measured=False,recall=None):
     query_vector=None
     if recall is not None:
@@ -32,6 +52,10 @@ def prepare_experience(agent,state,text,frame,needs,measured=False,recall=None):
         vector=agent.experience.meaning.embed([agent.experience.expand_for_recall(text)])
         query_vector=None if vector is None else vector[0]
     prepared=agent.experience.prepare(text,frame,query_vector)
+    state=topic_anticipation(agent,state,text,prepared)
+    import emotional_life
+    if emotional_life.ASKS_ABOUT_PATTERNS.search(text.replace('’',"'")):
+        prepared['emotional_patterns']=agent.experience.emotional_patterns()  # #22: what Friday has learned about itself
     if frame.get('_profile_parse'):prepared['profile_parse']=frame['_profile_parse']
     feedback=prepared['feedback']
     if feedback:

@@ -354,7 +354,7 @@ class StyleAndOutput(unittest.TestCase):
         self.assertEqual(cc.vary_opener_closer("Honestly, just focus on your friends. You've got this.", history), 'Just focus on your friends.')
 
     def test_soft_length_target(self):
-        self.assertEqual(cc.length_target('wedding day'), 15)
+        self.assertEqual(cc.length_target('wedding day'), 12)  # v35 rhythm: was 15
         self.assertIsNone(cc.length_target('can you help me write a short toast'))
         self.assertIsNone(cc.length_target('explain how you remember things'))
 

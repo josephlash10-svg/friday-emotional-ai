@@ -14,6 +14,7 @@ from dataclasses import replace
 from developmental_emotion import OwnEvent
 from conversation_evidence import declarations,correction_topics,speaker_terms,belief_revision,interpersonal_report,content_words
 import time_sense
+import emotional_life
 
 KINDS=('ordinary','correction','feedback','introduction','relationship','preference','self_question')
 SCOPES=('intent','answer','relationship','preference','external_fact','identity','none')
@@ -56,7 +57,8 @@ class ExperienceModel:
                    'goals':{'understanding':.8,'usefulness':.7,'continuity':.5},
                    'lessons':[],'episodes':[],'last_significant':None,
                    'stats':{'interactions':0,'corrections':0,'feedback':0,'confirmed_transfers':0},
-                   'needs':[.5]*7,'conversations':[],'events':[]}
+                   'needs':[.5]*7,'conversations':[],'events':[],'people':{},
+                   'emotion_stats':emotional_life.new_stats(),'topic_feelings':{}}
         if snapshot is not None:
             if not isinstance(snapshot,dict) or snapshot.get('version')!=1: raise ValueError('Unsupported experience memory')
             if len(snapshot.get('episodes',[]))>self.capacity or len(snapshot.get('lessons',[]))>self.lesson_capacity:
@@ -68,6 +70,7 @@ class ExperienceModel:
                 for episode in self.data['episodes']:
                     try:self._note_people(episode['input'],time_sense.parse(episode['time_utc']))
                     except (KeyError,ValueError,TypeError):pass
+            if 'emotion_stats' not in self.data:self._backfill_emotional_life()
 
     def snapshot(self): return copy.deepcopy(self.data)
 
@@ -209,6 +212,30 @@ class ExperienceModel:
     def _worth_indexing(text,minimum=3):
         # Small talk isn't a memory worth recalling, and indexing it pulled "lol ok" toward every short question.
         return len(content_words(text))>=minimum
+
+    # --- Emotional life over time (v35): statistics (#22) and feelings tied to topics (#20) ------------------------------
+    def _note_feelings(self,text,before,after,said):
+        people=self.data.get('people',{})
+        emotional_life.update_stats(self.data.setdefault('emotion_stats',emotional_life.new_stats()),before,after,text,said,people)
+        emotional_life.update_topic_feelings(self.data.setdefault('topic_feelings',{}),before,after,text,said,people)
+
+    def _backfill_emotional_life(self):
+        """Memories saved before v35: rebuild the statistics and topic feelings from the stored exchanges."""
+        self.data['emotion_stats'],self.data['topic_feelings']=emotional_life.new_stats(),{}
+        for episode in self.data['episodes']:
+            try:said=time_sense.parse(episode['time_utc'])
+            except (KeyError,ValueError,TypeError):continue
+            if episode.get('after'):self._note_feelings(episode['input'],episode.get('before',{}),episode['after'],said)
+
+    def emotional_patterns(self):
+        return emotional_life.describe_stats(self.data.get('emotion_stats',{}))
+
+    def topic_history(self,text,history=()):
+        """Subjects in this message with a feeling attached from before, unless already raised in this conversation
+        (the anticipation is for a subject coming back, not one being talked about)."""
+        people=self.data.get('people',{})
+        earlier=set().union(*[emotional_life.topics(r['content'],people) for r in history if r.get('role')=='user'] or [set()])
+        return [h for h in emotional_life.topic_history(self.data.get('topic_feelings',{}),text,people) if h[0] not in earlier]
 
     def enable_meaning(self,meaning_index=None):
         """Recall stored exchanges by meaning. Exchanges saved without a vector are embedded on a background thread and
@@ -501,6 +528,7 @@ class ExperienceModel:
                  'before':before,'after':after,'development':turn.development,'feedback_used':False}
         self.data['episodes'].append(episode);self.data['episodes']=self.data['episodes'][-self.capacity:]
         self._note_conversation(episode,now);self._note_events(text,now);self._note_people(text,now)
+        self._note_feelings(text,before,after,now)
         if self.meaning_enabled and self._worth_indexing(text):
             # After the reply is on screen: about 10 ms, while the checkpoint is being saved anyway.
             self._sync_vectors()
