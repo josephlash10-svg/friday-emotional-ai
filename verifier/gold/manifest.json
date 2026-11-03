@@ -1,0 +1,11 @@
+{
+  "questions_version": "v0.2",
+  "labelers": 1,
+  "kept_questions": "not determined (one labeler)",
+  "items": 171,
+  "heldout_items": 65,
+  "heldout_ids_sha256": "b287732f70cfe7d2b25839f7ca27cabd88740b390483da4a4239fb6281fef6e0",
+  "labels_sha256": {
+    "labels-bob.jsonl": "bd8d04b666e1810736aa970a49b8b41374efcc06d75a0ed54fa9f41bd4767408"
+  }
+}

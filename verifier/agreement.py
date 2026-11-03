@@ -75,7 +75,35 @@ def main(first, second):
     print('\n'.join(lines))
 
 
+def single(path):
+    """One labeler: no kappa is possible. Report what was labeled and pin the held-out ids, marked single-labeler."""
+    rows = load(path)
+    questions = json.loads((ROOT / 'verifier/questions.json').read_text(encoding='utf-8'))['questions']
+    ratings = {r: sum(x.get('rating') == r for x in rows.values()) for r in ('good', 'minor', 'major')}
+    lines = ['# V0 gold set: one labeler', '',
+             f'`{Path(path).name}`: {len(rows)} replies rated by one person. Agreement between labelers (kappa) **cannot be measured** with one '
+             'labeler, so no problem is marked KEEP or UNRATED yet; treat each count as one person\'s judgment.', '',
+             f'Ratings: {ratings["good"]} good, {ratings["minor"]} minor, {ratings["major"]} major.', '',
+             '| Problem | Times marked | Held-out items with it |', '|---|---|---|']
+    for q in questions:
+        marked = [i for i, r in rows.items() if q['id'] in r.get('problems', [])]
+        lines.append(f"| {q['id']} {q.get('short', q['text'][:60])} | {len(marked)} | {sum(rows[i].get('split') == 'heldout' for i in marked)} |")
+    report = ROOT / 'verifier/reports/gold-summary.md'
+    report.parent.mkdir(parents=True, exist_ok=True)
+    report.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+    heldout = sorted(i for i, r in rows.items() if r.get('split') == 'heldout')
+    manifest = {'questions_version': json.loads((ROOT / 'verifier/questions.json').read_text(encoding='utf-8'))['version'],
+                'labelers': 1, 'kept_questions': 'not determined (one labeler)', 'items': len(rows), 'heldout_items': len(heldout),
+                'heldout_ids_sha256': hashlib.sha256('\n'.join(heldout).encode()).hexdigest(),
+                'labels_sha256': {Path(path).name: hashlib.sha256(Path(path).read_bytes()).hexdigest()}}
+    (ROOT / 'verifier/gold/manifest.json').write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8')
+    print('\n'.join(lines))
+
+
 if __name__ == '__main__':
-    if len(sys.argv) != 3:
+    if len(sys.argv) == 2:
+        single(sys.argv[1])
+    elif len(sys.argv) == 3:
+        main(sys.argv[1], sys.argv[2])
+    else:
         sys.exit(__doc__)
-    main(sys.argv[1], sys.argv[2])
