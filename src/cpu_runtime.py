@@ -193,10 +193,12 @@ MIN_NATURAL_CONTEXT=3072
 def default_threads(cores=None):
     """(writing threads, prompt-reading threads). Reading the prompt is about 80% of a reply and scales with cores;
     writing is limited by memory speed. On the 10-core Snapdragon X, llama-bench read 71.5 tokens/s with 4 threads
-    and a 128 batch, 106.5 with 8 and 512, and wrote no slower (2026-11-03). Two cores stay free for everything else."""
+    and a 128 batch, and 106.5 with 8 and 512 (2026-11-03). In the real chat 8 reading threads cut replies by ~3.5 s,
+    but 6 writing threads wrote slower per token than 4 (0.079 s vs 0.062 s), so writing stays at 4. Two cores stay
+    free for everything else."""
     cores=cores or os.cpu_count() or 4
     spare=max(1,cores-2)
-    return min(6,spare),min(8,spare)
+    return min(4,spare),min(8,spare)
 
 class NativeLanguage:
     def __init__(self,model=None,runtime=DEFAULT_RUNTIME,threads=None,context=None,emotion_names=()):

@@ -156,9 +156,9 @@ class WhoIsWho(unittest.TestCase):
 class ServerThreads(unittest.TestCase):
     def test_threads_follow_the_core_count(self):
         from cpu_runtime import default_threads
-        self.assertEqual(default_threads(10), (6, 8))  # the Snapdragon X this was measured on
+        self.assertEqual(default_threads(10), (4, 8))  # the Snapdragon X this was measured on
         self.assertEqual(default_threads(4), (2, 2))   # two cores always left free
-        self.assertEqual(default_threads(16), (6, 8))  # writing gains little past 6; reading was measured up to 8
+        self.assertEqual(default_threads(16), (4, 8))  # 6 writing threads were slower in the real chat; reading measured up to 8
 
 
 if __name__ == '__main__':

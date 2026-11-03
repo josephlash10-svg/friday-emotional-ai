@@ -61,3 +61,18 @@ Two earlier runs that ran "off" and "on" one after the other disagreed with each
 - The 3 facts it still misses are asked about very indirectly, e.g. *"what money stuff was stressing me out"* for *"rent is going up 200 a month"*.
 - The people facts need a name written with a capital, or "named"/"called". *"my sister anna"* in lowercase isn't picked up, to avoid treating ordinary words as names.
 - The red-team mostly tests single conversations; the ten-day simulation remains the test for memory across days.
+
+## Faster replies (shipped with M1 in v34)
+The timing work above showed that reading the prompt is about 80% of a reply, since about 750 tokens are new each turn. llama-server had been reading prompts with 4 of the laptop's 10 cores, in batches of 128.
+- Prompt reading now uses up to 8 threads and batches of 512.
+- Writing stays at 4 threads: 6 wrote slower per token in the real chat.
+- Both counts follow the core count, with two cores always left free.
+
+Same 6 personas, 37 matched turns, old and new runs alternating:
+
+| Settings | Reply time, median | Prompt reading | Writing |
+|---|---|---|---|
+| Before (4 threads, batch 128) | 13.10 s | 10.56 s | 0.062 s/token |
+| **v34 (4 writing / 8 reading threads, batch 512)** | **9.15 s** | **6.47 s** | **0.065 s/token** |
+
+**30% faster per reply.** A thread count or batch size set in your own `state/native-language.json` still takes precedence. If yours has `"batch": 256` and `"ubatch": 128` from an earlier version, remove those two lines to get the speedup.

@@ -38,6 +38,17 @@ Only made-up red-team personas are used. No one's private conversations are in t
 & .\venv\Scripts\python.exe verifier\agreement.py verifier\gold\labels-a.jsonl verifier\gold\labels-b.jsonl
 ```
 
+## Where it stands (2026-11-03)
+
+**`gold/labels-bob.jsonl`: 171 replies rated by one person** (114 good, 40 minor, 17 major; 65 of them held out). The
+held-out ids are pinned in `gold/manifest.json`; `reports/gold-summary.md` counts each problem.
+- With one labeler, agreement can't be measured, so no problem is KEPT or UNRATED yet. A second labeler on the same
+  items would settle that.
+- Ratings produced outside the labeling page (written by a program in one pass) were set aside and are not part of
+  the gold set.
+
+For one labeler: `agreement.py gold/labels-bob.jsonl` writes the summary and the manifest.
+
 ## Pass bar (from the plan)
 - Kappa ≥ 0.6 on every kept problem, and at least 6 problems kept. Agreement on the overall rating is reported too.
 - Questions below the bar are **UNRATED**: if people can't agree on a question, no judge can be trusted on it.
