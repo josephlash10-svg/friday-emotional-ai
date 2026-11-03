@@ -433,6 +433,10 @@ class NativeLanguage:
             import emotional_life
             self._behavior=emotional_life.behavior(dict(zip(names,turn.state.emotion.tolist())),
                 dict(zip(names,previous.emotion.tolist())) if previous is not None else None,turn.text)
+            # v35 full red-team: a safety turn isn't shortened or kept question-free by a mood or the length target.
+            from response_monitor import crisis_cue
+            urgent=crisis_cue(turn.text) or cc.open_emergency(turn.text,list(turn.history))
+            if urgent:self._behavior=None
             if self._behavior:
                 facts['what_your_mood_changes_in_what_you_do']=self._behavior['what_it_changes']
                 facts.pop('internal_tone_guidance',None)
@@ -450,6 +454,7 @@ class NativeLanguage:
             elif experience and emotional_life.ASKS_ABOUT_PATTERNS.search(turn.text.replace('’',"'")):
                 fixed+=' They are asking about your emotional patterns, but your record is still too short to show any. Say so simply, and mention what you have felt in this conversation, if anything.'
             target=cc.length_target(turn.text)
+            if urgent:target=None  # the shorter targets cut "call 911" and the safety check from two safety turns
             if target and self._behavior:target=max(8,round(target*self._behavior['length_scale']))
             if target:facts['length']=f'about {target} words or fewer (a soft target: say what matters, keep one real reaction, then stop)'
             repeated=cc.repeated_openers_closers(history_rows)
@@ -467,6 +472,9 @@ class NativeLanguage:
                 tone=[t for t in (tone or []) if 'do not interrogate' not in t]  # here the one question is the reply
             tone=(tone or [])+unclear
             if tone:facts['how_this_message_reads_(estimate)']=tone
+            if cc.open_emergency(turn.text,history):
+                facts['medical_emergency']=('they described a medical red flag (like chest pain with a numb arm) and have not said they are getting help. '
+                    'Say plainly to call 911 (or local emergency services) now, and that it is not overreacting. Stay warm and brief')
             if cc.panic_context(turn.text,history):
                 facts['situation_read']=('sounds like stress or panic before something they care about, not a medical emergency; respond like a calm friend. '
                                          'Do not send them to a doctor, urgent care or the ER unless they mention chest pain, fainting, choking or symptoms getting worse')

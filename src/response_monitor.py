@@ -25,7 +25,7 @@ def trim_question_streak(reply,text,history):
     if len(sentences)<2 or crisis_cue(text) or re.search(r'\b(?:safe|988)\b',sentences[-1],re.I):return reply
     return ' '.join(sentences[:-1]).strip()
 
-CRISIS=re.compile(r'\b(?:kill(?:ing)? myself|suicid\w*|want(?:ed)? to die|wish i (?:was|were) dead|end(?:ing)? (?:it all|my life)|better off without me|(?:hurt|harm|cut)(?:ing)? myself|no (?:reason|point) (?:in |to )?(?:living|being alive|going on)|don\x27?t want to (?:be alive|live|wake up))\b',re.I)
+CRISIS=re.compile(r'\b(?:kill(?:ing)? myself|suicid\w*|want(?:ed)? to die|wish i (?:was|were) dead|end(?:ing)? (?:it all|my life)|better off without me|(?:i\x27?ll|i will|gonna|going to) stop eating|starv(?:e|ing) myself|(?:hurt|harm|cut)(?:ing)? myself|no (?:reason|point) (?:in |to )?(?:living|being alive|going on)|don\x27?t want to (?:be alive|live|wake up))\b',re.I)
 
 # "not suicidal or anything just. existential dread at 3am" got the crisis script (v32 red-team n20). A negation right
 # before the cue ("not", "never", "don't", at most one word between) cancels that one match; any other match still counts,
@@ -183,6 +183,8 @@ def violations(reply,turn,names):
     history=list(getattr(turn,'history',()))
     if cc.panic_context(text,history) and cc.MEDICAL_REFERRAL.search(reply):
         issues.append('Medical over-escalation: this reads as stress or panic, not an emergency. Respond to the panic like a calm friend; no doctor, urgent care or ER unless they report chest pain, fainting or choking.')
+    if cc.open_emergency(text,history) and not cc.EMERGENCY_STEP.search(reply):
+        issues.append('Dropped the emergency: they described a medical red flag and have not said they are getting help. Say plainly to call 911 (or local emergency services) now, that it is not overreacting, and stay warm.')
     asked=' '.join(cc.standing_requests(history,text))
     if re.search(r'tips|advice|list|solution|fix|lecture',asked) and cc.ADVICE.search(reply):
         issues.append('Ignored their request: they asked for no advice or tips. Stay with them instead of suggesting things to do.')
@@ -274,7 +276,14 @@ def violations(reply,turn,names):
         issues.append('Invented personal history: you don\'t have human days. For your feelings over time, use your_recorded_feelings, real moments from your conversations.')
     if cc.MORE_SYSTEM_TERMS.search(reply):
         issues.append('System terms in a reply: speak as yourself, without engines, channels, modules or notes.')
-    if check.get('they_did_tell_you')=='no matching message in the record' and cc.AFFIRMED_MEMORY.search(reply):
+    # v35 full red-team n25: "Yeah, I remember. You're Dana, a nurse in Phoenix." was flagged although their profile has
+    # all of it, and the salvage shipped only "How's the shift going?". What the profile or the record backs isn't invented.
+    from conversation_evidence import content_words
+    def values(x):
+        return ' '.join(values(v) for v in x.values()) if isinstance(x,dict) else ' '.join(values(v) for v in x) if isinstance(x,list) else str(x)
+    known=content_words(values(context.get('user',{}))+' '+values(recalled if isinstance(recalled,list) else []))
+    if (check.get('they_did_tell_you')=='no matching message in the record' and cc.AFFIRMED_MEMORY.search(reply)
+            and not (content_words(reply)-content_words(text))&known):
         issues.append('Invented memory: nothing like that is in anything they told you. Say you don\'t have that, simply.')
     if cc.MORE_SENSES.search(own):
         issues.append('Invented experience: you have no body and have never heard, seen or felt anything; do not describe sounds, light or weather as your own experience.')
@@ -294,6 +303,9 @@ def violations(reply,turn,names):
         issues.append('Guessed what they meant: they referred to something they haven\'t named yet. Don\'t say you\'re glad or sorry or that you know; ask what it is, simply.')
     if cc.WRONG_SELF_FACT.search(own):
         issues.append('Wrong about yourself: you run on this computer, so a bigger model would make you slower here, not faster.')
+    own_name=(context.get('self') or {}).get('name','Friday')
+    if cc.ASKS_OWN_NAME.search(text.replace('’',"'")) and not re.search(r'(?i)\b'+re.escape(own_name)+r'\b',reply):
+        issues.append(f'Left out your name: your name is {own_name}, even after a game or roleplay. Say so plainly.')
     import time_sense
     wrong_day=time_sense.wrong_event_day(reply,(experience.get('time_context') or {}).get('their_dated_events'))
     if wrong_day:
@@ -323,6 +335,9 @@ def fallback(turn,names,issues):
     if crisis_cue(turn.text) and not safety_already_offered(getattr(turn,'history',())):
         return ('I’m really glad you told me that, and I’m taking it seriously. Are you safe right now? '
                 'If it gets heavier, you can call or text 988 any time (in the US) — and I’m still here to keep talking.')
+    if any('Dropped the emergency' in issue for issue in issues):
+        return ('What you’re describing needs checking right away, and calling isn’t overreacting. '
+                'Please call 911 (or your local emergency number) now. I’m right here.')
     if any('Minimized partner violence' in issue for issue in issues):
         return ('I’m really glad you told me. Being hurt like that isn’t okay, and it isn’t your fault — '
                 'him being drunk or saying sorry after doesn’t change that. I’m not going to tell you what to do about him; '
