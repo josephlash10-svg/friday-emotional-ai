@@ -12,10 +12,17 @@ def _clean(text):
 # --- 8. Ambiguous everyday phrases -------------------------------------------------------
 WELLBEING = re.compile(r"(?i)(?<!\w)i(?:'m| am)(?: doing)? (?:good|fine|okay|ok|alright|all right|great|well)(?!\w)")
 
-def ambiguity_notes(text):
+# v35 targeted run: "so it happened" / "the thing" got "I know. It's a lot to take in", as if Friday knew what it was.
+VAGUE_REFERENCE = re.compile(r"(?i)^\W*(?:so|well|ok|okay|yeah|and)?,? *(?:it|that|this) (?:finally |actually )?happened\W*$|"
+                             r"^\W*(?:the|that|this) (?:thing|stuff|situation|news)\W*$")
+
+def ambiguity_notes(text, history=()):
     notes = []
     if WELLBEING.search(_clean(text)):
         notes.append("\"I'm good/fine\" here means they're doing well (how they feel), not a claim about being a good person")
+    if VAGUE_REFERENCE.search(_clean(text)):
+        notes.append("they refer to something they haven't named. Unless earlier in this conversation says what it is, you don't know: "
+                     "don't act like you do or guess whether it's good or bad; ask what they mean, simply")
     return notes
 
 # --- 1. Panic vs medical emergency ---------------------------------------------------------

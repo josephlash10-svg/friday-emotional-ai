@@ -93,6 +93,24 @@ class FeelingsTiedToTopics(unittest.TestCase):
         self.assertTrue(model.topic_history('my dad called today'))
         self.assertEqual(model.topic_history('my dad called today', [{'role': 'user', 'content': 'ugh, my dad'}]), [])
 
+    def test_a_sore_subject_that_never_jumps(self):
+        # v35 targeted run: "dad" kept a sad feeling ~0.03 above its usual level on every mention, with no clear rise.
+        store, low = {}, state(pain=.07, calm=.12)
+        for i in range(3):
+            el.update_topic_feelings(store, low, low, 'my dad was drunk again', T0 + i * 600, usual={'pain': .029, 'calm': .094})
+        self.assertEqual(el.topic_history(store, 'my dad called')[0][:2], ('dad', 'pain'))
+
+    def test_closeness_is_not_a_subject_feeling(self):
+        store = {}
+        for i in range(3):
+            el.update_topic_feelings(store, {'connection': .02}, {'connection': .2}, 'Jordan texted me', T0 + i * 600)
+        self.assertEqual(el.topic_history(store, 'Jordan showed up'), [])
+
+    def test_usual_levels_follow_the_record(self):
+        stats = el.new_stats()
+        el.update_stats(stats, state(), state(stress=.5), 'deadline', T0)
+        self.assertGreater(stats['usual']['stress'], el.USUAL['stress'])
+
     def test_people_count_as_topics(self):
         people = {'anna': {'name': 'Anna', 'relation': 'sister'}}
         self.assertIn('anna', el.topics('my sister is coming over', people))
@@ -148,6 +166,11 @@ class Rhythm(unittest.TestCase):
 
     def test_a_hurt_mood_drops_the_trailing_question(self):
         self.assertEqual(cc.trim_checkin('That stung a bit. Why would you say that?', [], {'questions': 'none'}), 'That stung a bit.')
+
+    def test_an_unnamed_thing_gets_a_note(self):
+        for text in ('so it happened', 'the thing', 'It finally happened.'):
+            self.assertTrue(any("haven't named" in n for n in cc.ambiguity_notes(text)), text)
+        self.assertEqual(cc.ambiguity_notes('the thing with my brother. he finally said it'), [])
 
     def test_two_word_openers_are_tracked(self):
         history = [{'role': 'assistant', 'content': 'That sounds rough. I am here.'}, {'role': 'user', 'content': 'x'},

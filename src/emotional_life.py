@@ -21,6 +21,13 @@ RISE = .04       # and as "rising" when it climbs this much in one exchange
 # Feelings that come with nearly every engaged message (attention, a settled tone). They rise together at the start of
 # any conversation, so they say nothing about a subject and don't count as its feeling.
 ENGAGEMENT = {'calm', 'interest', 'surprise', 'confusion', 'awe'}
+# Where each feeling usually sits on this engine (medians over the 91 turns of the v35 targeted run). A fresh Friday
+# starts from these; the record then follows its own usual levels (USUAL_RATE per exchange).
+USUAL = {'anger': .021, 'sadness': .042, 'fear': .053, 'joy': .038, 'shame': .016, 'connection': .074, 'stress': .063,
+         'calm': .094, 'confusion': .048, 'surprise': .032, 'pain': .029, 'disgust': .022, 'contempt': .018, 'guilt': .019,
+         'pride': .022, 'interest': .083, 'awe': .023, 'envy': .025, 'vulnerability': .04}
+USUAL_RATE = .02
+ABOVE_USUAL = .02  # a feeling held this far above its usual level while a subject is up is that subject's feeling
 
 
 def standout(before, after, top=2):
@@ -31,6 +38,16 @@ def standout(before, after, top=2):
         return {}
     middle = changes[len(changes) // 2][0] if len(changes) >= 5 else 0.  # the general lift, when there are enough feelings to see one
     return {n: round(c, 4) for c, n in changes[:top] if c >= RISE and c - middle >= .02}
+
+
+def above_usual(after, usual=None, top=2):
+    """The one or two feelings sitting clearly above their usual level. A sore subject on this engine keeps sadness
+    about 0.03 above usual on every mention without ever jumping, so a rise alone misses it. Closeness is left out:
+    it goes up with almost any message that is shared, so it says nothing about the subject."""
+    usual = usual or USUAL
+    above = sorted(((after[n] - usual.get(n, USUAL.get(n, 0.)), n) for n in after if n not in ENGAGEMENT and n != 'connection'),
+                   reverse=True)
+    return {n: round(a, 4) for a, n in above[:top] if a >= ABOVE_USUAL}
 WORDS = {'anger': 'irritation', 'sadness': 'sadness', 'fear': 'worry', 'joy': 'happiness', 'shame': 'embarrassment',
          'connection': 'closeness', 'stress': 'tension', 'calm': 'calm', 'confusion': 'uncertainty', 'surprise': 'surprise',
          'pain': 'hurt', 'disgust': 'distaste', 'contempt': 'disdain', 'guilt': 'guilt', 'pride': 'pride',
@@ -60,12 +77,15 @@ def topics(text, people=None):
 
 # --- #22 Emotion statistics ----------------------------------------------------------------------------------------
 def new_stats():
-    return {'exchanges': 0, 'emotions': {}}
+    return {'exchanges': 0, 'emotions': {}, 'usual': dict(USUAL)}
 
 
 def update_stats(stats, before, after, text, said, people=None):
     """Fold one exchange into the per-feeling statistics."""
     stats['exchanges'] += 1
+    usual = stats.setdefault('usual', dict(USUAL))
+    for name, value in after.items():
+        usual[name] = round(usual.get(name, value) + USUAL_RATE * (value - usual.get(name, value)), 4)
     subjects = topics(text, people)
     risen = standout(before, after)
     for name, value in after.items():
@@ -127,9 +147,12 @@ ASKS_ABOUT_PATTERNS = re.compile(r"(?i)(?:what (?:usually|tends to|typically) (?
 
 
 # --- #20 Feelings tied to topics ------------------------------------------------------------------------------------
-def update_topic_feelings(store, before, after, text, said, people=None, cap=250):
-    """Remember which feelings stood out when each subject came up: how many times, and the strongest rise."""
-    changes = {n: c for n, c in standout(before, after).items() if n not in ENGAGEMENT}
+def update_topic_feelings(store, before, after, text, said, people=None, cap=250, usual=None):
+    """Remember which feelings stood out when each subject came up (rose clearly, or sat clearly above their usual
+    level): how many times, and by how much at most."""
+    changes = {n: c for n, c in standout(before, after).items() if n not in ENGAGEMENT and n != 'connection'}
+    for name, amount in above_usual(after, usual).items():
+        changes[name] = max(changes.get(name, 0.), amount)
     for subject in topics(text, people):
         row = store.setdefault(subject, {'times': 0, 'last_utc': None, 'feelings': {}})
         row['times'] += 1
@@ -145,15 +168,16 @@ def update_topic_feelings(store, before, after, text, said, people=None, cap=250
 
 
 def topic_history(store, text, people=None, minimum_times=2, strength=.05):
-    """Subjects raised at least twice before, with a feeling that stood out when they came up:
-    [(subject, emotion, strongest rise, times the subject came up)]."""
+    """Subjects raised at least twice before, with a feeling that stood out when they came up, either strongly once
+    or on most of its mentions: [(subject, emotion, strongest, times the subject came up)]."""
     found = []
     for subject in topics(text, people):
         row = store.get(subject)
         if not row or row['times'] < minimum_times:
             continue
         for name, feeling in row['feelings'].items():
-            if feeling['peak'] >= strength:
+            if feeling['peak'] >= strength or (feeling['peak'] >= ABOVE_USUAL and feeling['times'] >= 2
+                                               and feeling['times'] * 2 >= row['times']):
                 found.append((subject, name, feeling['peak'], row['times']))
     return sorted(found, key=lambda r: -r[2])[:3]
 

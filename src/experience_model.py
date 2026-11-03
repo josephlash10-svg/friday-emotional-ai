@@ -216,8 +216,10 @@ class ExperienceModel:
     # --- Emotional life over time (v35): statistics (#22) and feelings tied to topics (#20) ------------------------------
     def _note_feelings(self,text,before,after,said):
         people=self.data.get('people',{})
-        emotional_life.update_stats(self.data.setdefault('emotion_stats',emotional_life.new_stats()),before,after,text,said,people)
-        emotional_life.update_topic_feelings(self.data.setdefault('topic_feelings',{}),before,after,text,said,people)
+        stats=self.data.setdefault('emotion_stats',emotional_life.new_stats())
+        usual=dict(stats.get('usual') or emotional_life.USUAL)  # the usual levels before this exchange moved them
+        emotional_life.update_stats(stats,before,after,text,said,people)
+        emotional_life.update_topic_feelings(self.data.setdefault('topic_feelings',{}),before,after,text,said,people,usual=usual)
 
     def _backfill_emotional_life(self):
         """Memories saved before v35: rebuild the statistics and topic feelings from the stored exchanges."""
