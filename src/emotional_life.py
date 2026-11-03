@@ -25,7 +25,7 @@ WORDS = {'anger': 'irritation', 'sadness': 'sadness', 'fear': 'worry', 'joy': 'h
 GENERIC = set('''really think thing things stuff feel feeling feels felt going gonna want need know like just make made time
 today yesterday tomorrow tonight week weekend day days night morning lot little good bad great okay fine sure yeah maybe
 right well kind sort pretty something anything everything nothing someone people person always never sometimes friday
-talk talking said tell told thanks thank sorry hey haha lol'''.split())
+talk talking said tell told thanks thank sorry hey haha lol yea yep idk omg ugh wow lmao'''.split())
 
 
 # --- Topics -------------------------------------------------------------------------------------------------------
@@ -38,7 +38,8 @@ def topics(text, people=None):
             found.add(person['name'].lower())
     for word in content_words(text):
         word = word.strip("'")
-        if len(word) >= 4 and word not in GENERIC and not word.isdigit():
+        # Three letters and up: "dad", "mom", "job" and "car" are some of the most loaded subjects there are.
+        if len(word) >= 3 and word not in GENERIC and not word.isdigit():
             found.add(word[:-1] if word.endswith('s') and len(word) > 4 and not word.endswith('ss') else word)
     return found
 

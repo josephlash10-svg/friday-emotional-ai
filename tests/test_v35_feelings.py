@@ -1,0 +1,168 @@
+"""v35: emotion statistics (#22), feelings tied to topics (#20), mood changing behavior (#18), and rhythm (#17)."""
+import sys
+import time
+import unittest
+from pathlib import Path
+from types import SimpleNamespace
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
+import torch
+import conversation_checks as cc
+import emotional_life as el
+import time_sense as ts
+from experience_model import ExperienceModel
+
+NAMES = ('fear', 'stress', 'pain', 'joy', 'interest', 'calm')
+T0 = time.time() - 30 * 86400
+
+
+def state(**levels):
+    return {n: levels.get(n, .02) for n in NAMES}
+
+
+class EmotionStatistics(unittest.TestCase):
+    def build(self):
+        stats = el.new_stats()
+        # Work comes up three times and brings tension each time; one spell lasts three exchanges.
+        steps = [('my manager yelled at me about the deadline at work', state(), state(stress=.4)),
+                 ('still thinking about work', state(stress=.4), state(stress=.35)),
+                 ('anyway, dinner was good', state(stress=.35), state(stress=.2)),
+                 ('ok', state(stress=.2), state(stress=.05)),
+                 ('work again tomorrow, manager wants a meeting', state(stress=.05), state(stress=.3)),
+                 ('the new puppy is adorable', state(stress=.3), state(stress=.1, joy=.45)),
+                 ('my manager is on vacation next week', state(stress=.1), state(stress=.25))]
+        for i, (text, before, after) in enumerate(steps):
+            el.update_stats(stats, before, after, text, T0 + i * 600)
+        return stats
+
+    def test_counts_speed_duration_and_triggers(self):
+        row = self.build()['emotions']['stress']
+        self.assertEqual(row['rises'], 3)
+        self.assertEqual(row['spells'], 2)  # closed spells: work (3 exchanges, falls below 0.15 at "ok"), then the second
+        self.assertEqual(row['triggers'].get('manager'), 3)
+
+    def test_described_in_plain_words(self):
+        described = el.describe_stats(self.build())
+        tension = next(d for d in described if d['feeling'] == 'tension')
+        self.assertIn('came up in 3 of 7 exchanges', tension['how_often'])
+        self.assertEqual(tension['how_fast'], 'comes on fast')
+        self.assertIn('manager', tension['usually_set_off_by'])
+        self.assertEqual(described[0]['feeling'], 'tension')  # the most frequent first
+
+    def test_question_detector(self):
+        for text in ('what usually makes you uneasy?', 'how long do your feelings last', 'what are you like emotionally',
+                     'do you get anxious a lot?', 'what kind of things upset you'):
+            self.assertTrue(el.ASKS_ABOUT_PATTERNS.search(text), text)
+        self.assertFalse(el.ASKS_ABOUT_PATTERNS.search('what makes a good cake'))
+
+    def test_old_memories_are_rebuilt(self):
+        model = ExperienceModel()
+        for i, (text, after) in enumerate([('my sister Anna keeps cancelling on me', {'pain': .3, 'stress': .2}),
+                                            ('Anna cancelled again', {'pain': .35, 'stress': .1})]):
+            model.data['episodes'].append({'id': i + 1, 'time_utc': ts.stamp(T0 + i * 86400), 'input': text, 'response': 'ok',
+                                           'interpretation': {'scope': 'none'}, 'before': {'pain': .02, 'stress': .02}, 'after': after})
+        data = model.snapshot()
+        del data['emotion_stats'], data['topic_feelings']
+        restored = ExperienceModel(data)
+        self.assertEqual(restored.data['emotion_stats']['emotions']['pain']['rises'], 2)
+        self.assertIn('anna', restored.data['topic_feelings'])
+
+
+class FeelingsTiedToTopics(unittest.TestCase):
+    def store(self):
+        store = {}
+        for i in range(3):
+            el.update_topic_feelings(store, state(), state(pain=.25), 'my dad never calls me back', T0 + i * 86400)
+        el.update_topic_feelings(store, state(), state(joy=.3), 'the garden is finally blooming', T0)
+        return store
+
+    def test_a_subject_with_a_history(self):
+        history = el.topic_history(self.store(), 'my dad called today')
+        self.assertEqual(history[0][:2], ('dad', 'pain'))
+
+    def test_needs_two_times_and_a_clear_feeling(self):
+        self.assertEqual(el.topic_history(self.store(), 'the garden looks nice'), [])  # only once before
+
+    def test_the_nudge_is_small_and_bounded(self):
+        nudge = el.topic_nudge([('dad', 'pain', .25, 3), ('work', 'pain', .9, 5)], NAMES)
+        self.assertEqual(nudge, {'pain': .12})
+
+    def test_only_when_the_subject_comes_back(self):
+        model = ExperienceModel()
+        model.data['topic_feelings'] = self.store()
+        self.assertTrue(model.topic_history('my dad called today'))
+        self.assertEqual(model.topic_history('my dad called today', [{'role': 'user', 'content': 'ugh, my dad'}]), [])
+
+    def test_people_count_as_topics(self):
+        people = {'anna': {'name': 'Anna', 'relation': 'sister'}}
+        self.assertIn('anna', el.topics('my sister is coming over', people))
+
+
+class MoodChangesBehavior(unittest.TestCase):
+    def test_hurt_is_brief_and_asks_nothing(self):
+        profile = el.behavior(state(pain=.35))
+        self.assertEqual((profile['mood'], profile['questions']), ('hurt', 'none'))
+        self.assertLess(profile['length_scale'], 1)
+
+    def test_curious_welcomes_a_question(self):
+        self.assertEqual(el.behavior(state(interest=.4))['questions'], 'welcome')
+
+    def test_tense_means_no_jokes(self):
+        self.assertFalse(el.behavior(state(fear=.4))['humor'])
+
+    def test_nothing_stands_out(self):
+        self.assertIsNone(el.behavior(state(calm=.08)))
+
+    def test_the_strongest_notable_feeling_wins(self):
+        self.assertEqual(el.behavior(state(pain=.22, interest=.6))['mood'], 'curious')
+
+
+class Rhythm(unittest.TestCase):
+    def test_lower_length_targets(self):
+        self.assertEqual(cc.length_target('ok cool'), 12)
+        self.assertEqual(cc.length_target('my sister is coming over this weekend and I am kind of nervous'), 18)
+
+    def test_generic_checkin_after_a_question_is_dropped(self):
+        history = [{'role': 'assistant', 'content': 'What happened at work?'}]
+        reply = "That sounds exhausting. How are you feeling right now?"
+        self.assertEqual(cc.trim_checkin(reply, history), 'That sounds exhausting.')
+
+    def test_a_real_question_stays(self):
+        history = [{'role': 'assistant', 'content': 'What happened at work?'}]
+        reply = 'That sounds exhausting. Did your manager say why?'
+        self.assertEqual(cc.trim_checkin(reply, history), reply)
+
+    def test_a_safety_question_always_stays(self):
+        reply = "I'm glad you told me. Are you safe right now?"
+        self.assertEqual(cc.trim_checkin(reply, [{'role': 'assistant', 'content': 'Want to talk?'}], {'questions': 'none'}), reply)
+
+    def test_a_hurt_mood_drops_the_trailing_question(self):
+        self.assertEqual(cc.trim_checkin('That stung a bit. Why would you say that?', [], {'questions': 'none'}), 'That stung a bit.')
+
+    def test_two_word_openers_are_tracked(self):
+        history = [{'role': 'assistant', 'content': 'That sounds rough. I am here.'}, {'role': 'user', 'content': 'x'},
+                   {'role': 'assistant', 'content': 'That sounds hard. Want to talk?'}]
+        self.assertIn('that sounds', cc.repeated_openers_closers(history))
+
+
+class TopicAnticipationInTheTurn(unittest.TestCase):
+    def test_the_starting_mood_rises_for_a_returning_subject(self):
+        from experience_loop import topic_anticipation
+        model = ExperienceModel()
+        for i in range(3):
+            el.update_topic_feelings(model.data['topic_feelings'], {'pain': .02}, {'pain': .3}, 'my dad never calls', T0 + i * 86400)
+        names = ('pain', 'joy')
+        agent = SimpleNamespace(cfg=SimpleNamespace(developmental_emotion=True), experience=model, chat_history=[],
+                                development=SimpleNamespace(names=names))
+        from dataclasses import dataclass
+
+        @dataclass
+        class S:
+            emotion: torch.Tensor
+        prepared = {}
+        result = topic_anticipation(agent, S(torch.tensor([.02, .02])), 'my dad called', prepared)
+        self.assertAlmostEqual(float(result.emotion[0]), .14, places=2)
+        self.assertEqual(prepared['topic_history'][0]['it_usually_brings'], 'hurt')
+
+
+if __name__ == '__main__':
+    unittest.main()
