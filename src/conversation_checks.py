@@ -17,7 +17,7 @@ VAGUE_REFERENCE = re.compile(r"(?i)^\W*(?:so|well|ok|okay|yeah|and)?,? *(?:it|th
                              r"^\W*(?:the|that|this) (?:thing|stuff|situation|news)\W*$")
 
 # Glad or sorry about *it* ("I'm glad it's done"), not "I'm glad you're telling me", which is a fine reply.
-GUESSED = re.compile(r"(?i)\b(?:i'm|i am) (?:so |really )?(?:glad|sorry|happy|relieved) (?:it|that|this|he|she|they)\b|"
+GUESSED = re.compile(r"(?i)\b(?:i'm|i am) (?:so |really )?(?:glad|sorry|happy|relieved) (?:it|that|this|he|she|they|you(?:'re| are) (?:dealing|going through|stuck))\b|"
                      r"^\W*(?:yeah,? )?i know\b|congrat|\bthat's (?:great|awesome|amazing|terrible|awful|huge|exciting)\b")
 # Greeting a subject that has been hard before as good news: "My dad called this morning." -> "That's a relief" (v35).
 GOOD_NEWS = re.compile(r"(?i)\bthat(?:'s| is| sounds like) (?:such |really |so )?(?:a )?(?:relief|great|good|wonderful|awesome|nice|lovely)\b|"

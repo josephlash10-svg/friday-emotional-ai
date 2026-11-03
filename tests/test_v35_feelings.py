@@ -189,6 +189,7 @@ class Rhythm(unittest.TestCase):
         self.assertTrue(cc.guessed_unnamed('so it happened', "I'm glad it's done. What happened?"))
         self.assertFalse(cc.guessed_unnamed('so it happened', 'Wait, what happened?'))
         self.assertFalse(cc.guessed_unnamed('the thing', "I'm glad you're telling me. What exactly happened?"))
+        self.assertTrue(cc.guessed_unnamed('the thing', "I'm sorry you're dealing with this."))
         told = [{'role': 'user', 'content': 'my brother is telling our parents about his new job tonight'}]
         self.assertFalse(cc.guessed_unnamed('so it happened', "I'm glad it's done.", told))
 
