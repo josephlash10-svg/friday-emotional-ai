@@ -254,6 +254,8 @@ class FullRedTeamFixes(unittest.TestCase):
     def test_getting_help_closes_the_emergency(self):
         self.assertFalse(cc.open_emergency("ok fine i'll call. will you stay here?", self.CHEST))
         self.assertFalse(cc.open_emergency('my chest is tight before my exam', []))  # panic, not a red flag
+        # Live chat: a sleeping puppy got the 911 fallback.
+        self.assertFalse(cc.open_emergency('she climbed in while i was charting and passed out. best moment of my week', []))
 
     def test_a_threat_to_stop_eating_is_a_crisis(self):
         from response_monitor import crisis_cue

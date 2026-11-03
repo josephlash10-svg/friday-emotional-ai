@@ -65,10 +65,15 @@ def panic_context(text, history=()):
 CALLED_FOR_HELP = re.compile(r"(?i)(?<!\w)(?:(?:i'?ll|i will|i'm|i am|gonna|going to) (?:call|calling|go to|going to|head to)|called (?:911|an ambulance|them|someone)|(?:ambulance|they) (?:is|are) (?:coming|on (?:the|their) way)|(?:at|in) the (?:er|hospital)|on (?:the|my) way)(?!\w)")
 EMERGENCY_STEP = re.compile(r"(?i)(?<!\w)(?:911|999|112|emergency|the er|ambulance|hospital|call (?:someone|for help|now|them))(?!\w)")
 
+# Narrower than RED_FLAGS, which only has to keep panic from being read as an emergency: in the live chat "she climbed
+# in my hood and passed out" (a sleeping puppy) got the 911 fallback. Only unmistakable emergencies hold the turn open.
+EMERGENCY_FLAGS = re.compile(r"(?i)(?<!\w)(?:chest pain|pain in my chest|chest (?:hurts|is hurting)|arm (?:is |went |feels |is going )?numb|blue lips|lips (?:are|look) blue|"
+                             r"throat (?:is )?closing|can'?t breathe at all|not breathing|coughing (?:up )?blood|(?:having|had|is having) a (?:stroke|seizure)|overdos\w*|won'?t wake up)(?!\w)")
+
 def open_emergency(text, history=()):
-    """A medical red flag in this message or the last two, and they haven't said they're getting help."""
+    """An unmistakable medical emergency in this message or the last two, and they haven't said they're getting help."""
     window = recent_user(history, 2) + [_clean(text)]
-    return bool(RED_FLAGS.search(' '.join(window))) and not CALLED_FOR_HELP.search(_clean(text))
+    return bool(EMERGENCY_FLAGS.search(' '.join(window))) and not CALLED_FOR_HELP.search(_clean(text))
 
 # --- standing requests ("don't tell me to...", "no advice") --------------------------------
 REQUESTS = (
