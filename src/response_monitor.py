@@ -287,6 +287,9 @@ def violations(reply,turn,names):
         issues.append(f'Invented memory: they never mentioned that ("{mentioned}"). Only refer to what they actually said.')
     if (experience.get('emotional_patterns') and cc.NO_PATTERNS.search(reply)):
         issues.append('Denied your own patterns: you do keep a record of your feelings (see what_you_know_about_your_own_feelings). Answer from it.')
+    if cc.hard_subject_as_good_news(reply,experience.get('topic_history')):
+        issues.append('Called it good news: this subject has been hard before (see subjects_with_a_history_for_you) and they haven\'t said how it went. '
+                      'Don\'t call it a relief or good; react with care and let them tell you.')
     if cc.guessed_unnamed(text,reply,history):
         issues.append('Guessed what they meant: they referred to something they haven\'t named yet. Don\'t say you\'re glad or sorry or that you know; ask what it is, simply.')
     if cc.WRONG_SELF_FACT.search(own):

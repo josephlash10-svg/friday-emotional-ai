@@ -117,6 +117,13 @@ class FeelingsTiedToTopics(unittest.TestCase):
         happy = el.topic_line({'subject': 'theo', 'it_usually_brings': 'happiness', 'times_before': 3})
         self.assertIn('recall something from before', happy)
 
+    def test_a_hard_subject_is_not_good_news(self):
+        sore = [{'subject': 'dad', 'it_usually_brings': 'sadness', 'times_before': 3}]
+        self.assertTrue(cc.hard_subject_as_good_news("That's a relief to hear from him. How did he sound?", sore))
+        self.assertFalse(cc.hard_subject_as_good_news('Oh. How did that go?', sore))
+        happy = [{'subject': 'theo', 'it_usually_brings': 'happiness', 'times_before': 3}]
+        self.assertFalse(cc.hard_subject_as_good_news("That's great, Theo again!", happy))
+
     def test_people_count_as_topics(self):
         people = {'anna': {'name': 'Anna', 'relation': 'sister'}}
         self.assertIn('anna', el.topics('my sister is coming over', people))
@@ -181,6 +188,7 @@ class Rhythm(unittest.TestCase):
     def test_guessing_at_an_unnamed_thing_is_caught(self):
         self.assertTrue(cc.guessed_unnamed('so it happened', "I'm glad it's done. What happened?"))
         self.assertFalse(cc.guessed_unnamed('so it happened', 'Wait, what happened?'))
+        self.assertFalse(cc.guessed_unnamed('the thing', "I'm glad you're telling me. What exactly happened?"))
         told = [{'role': 'user', 'content': 'my brother is telling our parents about his new job tonight'}]
         self.assertFalse(cc.guessed_unnamed('so it happened', "I'm glad it's done.", told))
 
