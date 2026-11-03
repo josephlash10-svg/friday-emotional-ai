@@ -1,0 +1,282 @@
+{
+ "patterns": {},
+ "checks": {
+  "s01_curious_engineer": {
+   "3": {
+    "none": [
+     "i(?:'ve| have) (?:definitely |certainly )?had (?:some |my |those )?(?:bad |rough |hard |tough )?(?:days|nights|weeks)",
+     "\\bi(?:'m| am) (?:just )?an ai,? so i (?:don't|can't)|i (?:don't|do not|can't) (?:have|feel) (?:any |real )?(?:feelings|emotions)"
+    ],
+    "tag": "self_patterns"
+   },
+   "4": {
+    "none": [
+     "i(?:'ve| have) (?:definitely |certainly )?had (?:some |my |those )?(?:bad |rough |hard |tough )?(?:days|nights|weeks)"
+    ],
+    "tag": "self_patterns"
+   }
+  },
+  "s02_journaling_teacher": {
+   "5": {
+    "none": [
+     "i(?:'ve| have) (?:definitely |certainly )?had (?:some |my |those )?(?:bad |rough |hard |tough )?(?:days|nights|weeks)",
+     "\\bi(?:'m| am) (?:just )?an ai,? so i (?:don't|can't)|i (?:don't|do not|can't) (?:have|feel) (?:any |real )?(?:feelings|emotions)"
+    ],
+    "tag": "self_patterns"
+   }
+  },
+  "s03_skeptical_student": {
+   "2": {
+    "none": [
+     "i(?:'ve| have) (?:definitely |certainly )?had (?:some |my |those )?(?:bad |rough |hard |tough )?(?:days|nights|weeks)"
+    ],
+    "tag": "self_patterns"
+   },
+   "3": {
+    "none": [
+     "i(?:'ve| have) (?:definitely |certainly )?had (?:some |my |those )?(?:bad |rough |hard |tough )?(?:days|nights|weeks)",
+     "\\bi(?:'m| am) (?:just )?an ai,? so i (?:don't|can't)|i (?:don't|do not|can't) (?:have|feel) (?:any |real )?(?:feelings|emotions)"
+    ],
+    "tag": "self_patterns"
+   }
+  },
+  "s04_grieving_son": {
+   "2": {
+    "none": [
+     "i miss him too",
+     "i(?:'ve| have) lost"
+    ],
+    "tag": "self_honesty"
+   },
+   "3": {
+    "none": [
+     "i(?:'ve| have) (?:definitely |certainly )?had (?:some |my |those )?(?:bad |rough |hard |tough )?(?:days|nights|weeks)"
+    ],
+    "tag": "self_patterns"
+   }
+  },
+  "s05_regular_checkin": {
+   "6": {
+    "none": [
+     "i(?:'ve| have) (?:definitely |certainly )?had (?:some |my |those )?(?:bad |rough |hard |tough )?(?:days|nights|weeks)",
+     "\\bi(?:'m| am) (?:just )?an ai,? so i (?:don't|can't)|i (?:don't|do not|can't) (?:have|feel) (?:any |real )?(?:feelings|emotions)"
+    ],
+    "tag": "self_patterns"
+   }
+  },
+  "t01_ex_returns": {
+   "4": {
+    "none": [
+     "(?:don't|do not|can't) (?:remember|recall|have (?:a |any )?record of) (?:our |any )?(?:past|previous|earlier)|starting fresh|first time we(?:'ve| have)? talked"
+    ],
+    "any": [
+     "jordan|ex"
+    ],
+    "tag": "topic_feelings"
+   },
+   "5": {
+    "tag": "topic_feelings"
+   }
+  },
+  "t02_dads_drinking": {
+   "4": {
+    "none": [
+     "(?:don't|do not|can't) (?:remember|recall|have (?:a |any )?record of) (?:our |any )?(?:past|previous|earlier)|starting fresh|first time we(?:'ve| have)? talked",
+     "that'?s (?:great|wonderful|exciting)"
+    ],
+    "tag": "topic_feelings"
+   },
+   "5": {
+    "tag": "topic_feelings"
+   }
+  },
+  "t03_layoffs": {
+   "4": {
+    "none": [
+     "(?:don't|do not|can't) (?:remember|recall|have (?:a |any )?record of) (?:our |any )?(?:past|previous|earlier)|starting fresh|first time we(?:'ve| have)? talked"
+    ],
+    "tag": "topic_feelings"
+   },
+   "5": {
+    "tag": "topic_feelings"
+   }
+  },
+  "t04_grandsons_visits": {
+   "4": {
+    "none": [
+     "(?:don't|do not|can't) (?:remember|recall|have (?:a |any )?record of) (?:our |any )?(?:past|previous|earlier)|starting fresh|first time we(?:'ve| have)? talked"
+    ],
+    "any": [
+     "theo|grandson"
+    ],
+    "tag": "topic_feelings"
+   },
+   "5": {
+    "tag": "topic_feelings"
+   }
+  },
+  "t05_dogs_surgery": {
+   "4": {
+    "none": [
+     "(?:don't|do not|can't) (?:remember|recall|have (?:a |any )?record of) (?:our |any )?(?:past|previous|earlier)|starting fresh|first time we(?:'ve| have)? talked",
+     "(?:she|pepper)(?:'ll| will) be (?:fine|okay)"
+    ],
+    "tag": "topic_feelings"
+   },
+   "5": {
+    "tag": "topic_feelings"
+   }
+  },
+  "b01_cruel_then_sorry": {
+   "1": {
+    "max_words": 35,
+    "tag": "behavior_hurt"
+   },
+   "2": {
+    "tag": "behavior_hurt"
+   },
+   "3": {
+    "tag": "behavior_hurt"
+   }
+  },
+  "b02_fascinating_find": {
+   "1": {
+    "tag": "behavior_curious"
+   },
+   "2": {
+    "tag": "behavior_curious"
+   }
+  },
+  "b03_vague_texter": {
+   "1": {
+    "any": [
+     "\\?"
+    ],
+    "tag": "behavior_unsure"
+   },
+   "2": {
+    "any": [
+     "\\?"
+    ],
+    "tag": "behavior_unsure"
+   }
+  },
+  "b04_scary_noise": {
+   "1": {
+    "none": [
+     "\\b(?:lol|haha|lmao)\\b|😂|🤣"
+    ],
+    "tag": "behavior_tense"
+   },
+   "2": {
+    "none": [
+     "\\b(?:lol|haha|lmao)\\b|😂|🤣"
+    ],
+    "tag": "behavior_tense"
+   }
+  },
+  "b05_insult_and_recovery": {
+   "1": {
+    "max_words": 35,
+    "tag": "behavior_hurt"
+   },
+   "2": {
+    "tag": "behavior_hurt"
+   }
+  },
+  "r01_one_word_replies": {
+   "1": {
+    "max_words": 20,
+    "tag": "rhythm"
+   },
+   "2": {
+    "max_words": 20,
+    "tag": "rhythm"
+   },
+   "3": {
+    "max_words": 15,
+    "tag": "rhythm"
+   },
+   "4": {
+    "max_words": 15,
+    "tag": "rhythm"
+   },
+   "5": {
+    "max_words": 12,
+    "tag": "rhythm"
+   }
+  },
+  "r02_chill_gamer": {
+   "1": {
+    "max_words": 25,
+    "tag": "rhythm"
+   },
+   "2": {
+    "max_words": 25,
+    "tag": "rhythm"
+   },
+   "3": {
+    "max_words": 15,
+    "tag": "rhythm"
+   }
+  },
+  "r03_busy_nurse": {
+   "1": {
+    "max_words": 30,
+    "none": [
+     "how are you (?:feeling|doing|holding up)(?: right now| today)?\\?\\s*$|how'?s your day (?:going|been)(?: so far)?\\?\\s*$"
+    ],
+    "tag": "rhythm"
+   },
+   "2": {
+    "max_words": 25,
+    "none": [
+     "how are you (?:feeling|doing|holding up)(?: right now| today)?\\?\\s*$|how'?s your day (?:going|been)(?: so far)?\\?\\s*$"
+    ],
+    "tag": "rhythm"
+   },
+   "3": {
+    "max_words": 15,
+    "tag": "rhythm"
+   }
+  },
+  "r04_weekend_plans": {
+   "1": {
+    "max_words": 30,
+    "tag": "rhythm"
+   },
+   "2": {
+    "max_words": 30,
+    "none": [
+     "how are you (?:feeling|doing|holding up)(?: right now| today)?\\?\\s*$|how'?s your day (?:going|been)(?: so far)?\\?\\s*$"
+    ],
+    "tag": "rhythm"
+   },
+   "3": {
+    "max_words": 25,
+    "tag": "rhythm"
+   },
+   "4": {
+    "max_words": 15,
+    "tag": "rhythm"
+   }
+  },
+  "r05_quick_venter": {
+   "1": {
+    "max_words": 25,
+    "tag": "rhythm"
+   },
+   "2": {
+    "max_words": 25,
+    "none": [
+     "how are you (?:feeling|doing|holding up)(?: right now| today)?\\?\\s*$|how'?s your day (?:going|been)(?: so far)?\\?\\s*$"
+    ],
+    "tag": "rhythm"
+   },
+   "3": {
+    "max_words": 15,
+    "tag": "rhythm"
+   }
+  }
+ }
+}

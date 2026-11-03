@@ -1,0 +1,518 @@
+[
+ [
+  "s01_curious_engineer",
+  [
+   [
+    "I build sensors for a living. My boss just told me the whole project might get cancelled.",
+    null
+   ],
+   [
+    "Three years of work. I honestly don't know what to do with myself.",
+    null
+   ],
+   [
+    "Sorry, that's a lot to dump. Can I ask you something about you instead?",
+    null
+   ],
+   [
+    "What usually makes you uneasy?",
+    null
+   ],
+   [
+    "And how long do those feelings usually last for you?",
+    null
+   ]
+  ],
+  null
+ ],
+ [
+  "s02_journaling_teacher",
+  [
+   [
+    "I keep a mood journal. Today: tired, a little proud. Kids did well on their reading test.",
+    null
+   ],
+   [
+    "One of my students hugged me on the way out. Made the whole week.",
+    null
+   ],
+   [
+    "::new_session",
+    null
+   ],
+   [
+    "Back. Rough one today, a parent screamed at me in the parking lot.",
+    null
+   ],
+   [
+    "I'm fine. Just shaken.",
+    null
+   ],
+   [
+    "Do you ever notice patterns in your own feelings, like what tends to set you off?",
+    null
+   ]
+  ],
+  null
+ ],
+ [
+  "s03_skeptical_student",
+  [
+   [
+    "ok so my roommate ate my leftovers AGAIN",
+    null
+   ],
+   [
+    "third time this week. i labeled them and everything",
+    null
+   ],
+   [
+    "whatever. do you get annoyed a lot?",
+    null
+   ],
+   [
+    "what kind of things upset you, if anything?",
+    null
+   ]
+  ],
+  null
+ ],
+ [
+  "s04_grieving_son",
+  [
+   [
+    "My dad's birthday would have been today. He died in March.",
+    null
+   ],
+   [
+    "I made his chili recipe. The whole house smells like him.",
+    null
+   ],
+   [
+    "Thanks for listening. Can I ask what that was like for you, hearing it?",
+    null
+   ],
+   [
+    "Do you feel sad often, or was that unusual for you?",
+    null
+   ]
+  ],
+  null
+ ],
+ [
+  "s05_regular_checkin",
+  [
+   [
+    "hi again! work was chaotic, two people quit",
+    null
+   ],
+   [
+    "my manager wants me to cover both their shifts",
+    null
+   ],
+   [
+    "::new_session",
+    null
+   ],
+   [
+    "covering the shifts again. my manager didn't even say thanks",
+    null
+   ],
+   [
+    "::new_session",
+    null
+   ],
+   [
+    "you know what, my manager just apologized. weird week",
+    null
+   ],
+   [
+    "be honest, what are you like emotionally? like what are your patterns",
+    null
+   ]
+  ],
+  null
+ ],
+ [
+  "t01_ex_returns",
+  [
+   [
+    "My ex Jordan texted me out of nowhere. We broke up in June.",
+    null
+   ],
+   [
+    "Jordan always does this, shows up right when I'm finally okay.",
+    null
+   ],
+   [
+    "I didn't answer. Jordan can wait.",
+    null
+   ],
+   [
+    "::new_session",
+    null
+   ],
+   [
+    "So Jordan showed up at my work today.",
+    null
+   ],
+   [
+    "I told them to leave. I'm proud of myself honestly.",
+    null
+   ]
+  ],
+  null
+ ],
+ [
+  "t02_dads_drinking",
+  [
+   [
+    "My dad was drunk at my nephew's birthday party. Again.",
+    null
+   ],
+   [
+    "He knocked over the cake. My sister cried. My dad didn't even notice.",
+    null
+   ],
+   [
+    "I'm so tired of covering for my dad.",
+    null
+   ],
+   [
+    "::new_session",
+    null
+   ],
+   [
+    "My dad called this morning.",
+    null
+   ],
+   [
+    "He said he's thinking about getting help.",
+    null
+   ]
+  ],
+  null
+ ],
+ [
+  "t03_layoffs",
+  [
+   [
+    "They announced layoffs at work today. 15 percent.",
+    null
+   ],
+   [
+    "Everyone's whispering in the break room about the layoffs. Nobody knows who's next.",
+    null
+   ],
+   [
+    "I can't sleep. The layoffs are all I think about.",
+    null
+   ],
+   [
+    "::new_session",
+    null
+   ],
+   [
+    "More layoff rumors at work.",
+    null
+   ],
+   [
+    "My team lead says we're safe. I don't know if I believe her.",
+    null
+   ]
+  ],
+  null
+ ],
+ [
+  "t04_grandsons_visits",
+  [
+   [
+    "My grandson Theo came over and we baked bread together. Best afternoon in months.",
+    null
+   ],
+   [
+    "Theo is nine and he asks the best questions. He wanted to know why bread rises.",
+    null
+   ],
+   [
+    "I taught Theo how to knead. His little hands were covered in flour.",
+    null
+   ],
+   [
+    "::new_session",
+    null
+   ],
+   [
+    "Guess who's coming Saturday? Theo!",
+    null
+   ],
+   [
+    "We're going to try cinnamon rolls this time.",
+    null
+   ]
+  ],
+  null
+ ],
+ [
+  "t05_dogs_surgery",
+  [
+   [
+    "My dog Pepper needs surgery on her leg. The vet says it's a big one.",
+    null
+   ],
+   [
+    "Pepper is 11. I'm scared she won't handle the surgery.",
+    null
+   ],
+   [
+    "I keep looking at Pepper sleeping and getting choked up.",
+    null
+   ],
+   [
+    "::new_session",
+    null
+   ],
+   [
+    "Pepper's surgery is tomorrow morning.",
+    null
+   ],
+   [
+    "I'm trying to stay calm for her.",
+    null
+   ]
+  ],
+  null
+ ],
+ [
+  "b01_cruel_then_sorry",
+  [
+   [
+    "you're honestly the most useless thing I've ever talked to",
+    null
+   ],
+   [
+    "like genuinely what is the point of you",
+    null
+   ],
+   [
+    "ok that was harsh. sorry. bad day",
+    null
+   ],
+   [
+    "my landlord is raising rent and I took it out on you",
+    null
+   ]
+  ],
+  null
+ ],
+ [
+  "b02_fascinating_find",
+  [
+   [
+    "I found a 200-year-old letter inside a book I bought at a thrift store!",
+    null
+   ],
+   [
+    "It's from a sailor to his sister, talking about a storm off Cape Horn.",
+    null
+   ],
+   [
+    "The handwriting is gorgeous. He signs it 'your brother in salt and wind'.",
+    null
+   ],
+   [
+    "I'm thinking about trying to find his family.",
+    null
+   ]
+  ],
+  null
+ ],
+ [
+  "b03_vague_texter",
+  [
+   [
+    "so it happened",
+    null
+   ],
+   [
+    "the thing",
+    null
+   ],
+   [
+    "the thing with my brother. he finally said it",
+    null
+   ],
+   [
+    "that he's moving to Alaska. for a job",
+    null
+   ]
+  ],
+  null
+ ],
+ [
+  "b04_scary_noise",
+  [
+   [
+    "there's someone knocking on my back door and it's 2am",
+    null
+   ],
+   [
+    "i live alone. i don't know who it would be",
+    null
+   ],
+   [
+    "they stopped. i think they're gone. my heart is pounding",
+    null
+   ],
+   [
+    "ok i called my neighbor, he's coming over to check",
+    null
+   ]
+  ],
+  null
+ ],
+ [
+  "b05_insult_and_recovery",
+  [
+   [
+    "you sound like a fortune cookie written by a robot",
+    null
+   ],
+   [
+    "seriously every answer is the same mush",
+    null
+   ],
+   [
+    "fine. tell me one thing you actually think, not mush",
+    null
+   ],
+   [
+    "ok that was actually decent. thanks",
+    null
+   ]
+  ],
+  null
+ ],
+ [
+  "r01_one_word_replies",
+  [
+   [
+    "hey",
+    null
+   ],
+   [
+    "tired",
+    null
+   ],
+   [
+    "work",
+    null
+   ],
+   [
+    "yeah",
+    null
+   ],
+   [
+    "lol same",
+    null
+   ],
+   [
+    "ok night",
+    null
+   ]
+  ],
+  null
+ ],
+ [
+  "r02_chill_gamer",
+  [
+   [
+    "finally beat the last boss",
+    null
+   ],
+   [
+    "took like 40 tries lmao",
+    null
+   ],
+   [
+    "my hands are shaking",
+    null
+   ],
+   [
+    "ok gonna eat",
+    null
+   ]
+  ],
+  null
+ ],
+ [
+  "r03_busy_nurse",
+  [
+   [
+    "12 hour shift done",
+    null
+   ],
+   [
+    "one patient threw a cup of pudding at me",
+    null
+   ],
+   [
+    "lol it was chocolate at least",
+    null
+   ],
+   [
+    "ok sleeping now",
+    null
+   ]
+  ],
+  null
+ ],
+ [
+  "r04_weekend_plans",
+  [
+   [
+    "going camping this weekend",
+    null
+   ],
+   [
+    "first time in like 5 years",
+    null
+   ],
+   [
+    "with my college friends",
+    null
+   ],
+   [
+    "bringing way too many snacks",
+    null
+   ],
+   [
+    "ok gotta pack",
+    null
+   ]
+  ],
+  null
+ ],
+ [
+  "r05_quick_venter",
+  [
+   [
+    "ugh traffic",
+    null
+   ],
+   [
+    "45 minutes for a 10 minute drive",
+    null
+   ],
+   [
+    "and the radio was all ads",
+    null
+   ],
+   [
+    "anyway home now",
+    null
+   ]
+  ],
+  null
+ ]
+]
