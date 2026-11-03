@@ -52,6 +52,19 @@ CASES=[
  ('unknown_memory',[('What did I tell you about my childhood last month?',None)],None),
 ]
 
+def shift_record_back(data,seconds):
+ """Move every stored time back, so the chat so far becomes an earlier conversation. Rewriting only the episodes to a
+ fixed date (before v35) left the conversation records at today: Friday was told "first conversation" next to
+ memories dated ten months back."""
+ import time_sense
+ def back(stamp):return time_sense.stamp(time_sense.parse(stamp)-seconds) if stamp else stamp
+ for episode in data.get('episodes',[]):episode['time_utc']=back(episode.get('time_utc'))
+ for conversation in data.get('conversations',[]):
+  for key in ('start_utc','end_utc'):
+   if key in conversation:conversation[key]=back(conversation[key])
+  for highlight in conversation.get('highlights',[]):highlight['time_utc']=back(highlight.get('time_utc'))
+ for row in data.get('topic_feelings',{}).values():row['last_utc']=back(row.get('last_utc'))
+
 def main():
  torch.set_num_threads(4);torch.manual_seed(14);disable_progress_bars()
  args.output.mkdir(parents=True,exist_ok=True)
@@ -77,7 +90,7 @@ def main():
      agent.chat_history=[]
      state=replace(state,emotion=agent.development.recovered_emotion(state.emotion,72000)) if agent.cfg.developmental_emotion else state
      if agent.cfg.experience_model:
-      for episode in agent.experience.data['episodes']:episode['time_utc']='2026-01-01T00:00:00Z'  # mark as an earlier conversation
+      shift_record_back(agent.experience.data,72000)  # the earlier chat was 20 hours ago, matching the mood recovery
      trials.append({'case':case,'index':index,'text':text,'session_break':True})
      continue
     began=time.perf_counter()

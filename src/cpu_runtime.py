@@ -438,8 +438,10 @@ class NativeLanguage:
                 facts.pop('internal_tone_guidance',None)
             if experience and experience.get('topic_history'):
                 # v35 #20: subjects that came with a feeling before.
-                facts['subjects_with_a_history_for_you']=experience['topic_history']
-                fixed+=' A subject in subjects_with_a_history_for_you has brought that feeling up in you before; let it color your reply a little if it fits, and you can say so if they ask.'
+                # Third targeted run: "it_usually_brings: sadness" plus "let it color your reply" was ignored ("My dad called"
+                # -> "That's a relief"). Say what the history means for this reply.
+                facts['subjects_with_a_history_for_you']=[emotional_life.topic_line(h) for h in experience['topic_history']]
+                fixed+=' Let subjects_with_a_history_for_you shape this reply the way shared history would with a friend.'
             if experience and experience.get('emotional_patterns'):
                 # v35 #22: what Friday has learned about its own feelings, from its record.
                 facts['what_you_know_about_your_own_feelings']=experience['emotional_patterns']
@@ -460,7 +462,10 @@ class NativeLanguage:
             # Round-2 checks (2026-10-12): see conversation_checks.py for the observed failures.
             import conversation_checks as cc
             history=list(turn.history)
-            tone=(tone or [])+cc.ambiguity_notes(turn.text)
+            unclear=cc.ambiguity_notes(turn.text)
+            if cc.VAGUE_REFERENCE.search(turn.text.replace('’',"'")):
+                tone=[t for t in (tone or []) if 'do not interrogate' not in t]  # here the one question is the reply
+            tone=(tone or [])+unclear
             if tone:facts['how_this_message_reads_(estimate)']=tone
             if cc.panic_context(turn.text,history):
                 facts['situation_read']=('sounds like stress or panic before something they care about, not a medical emergency; respond like a calm friend. '

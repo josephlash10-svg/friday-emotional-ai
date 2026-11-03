@@ -111,6 +111,12 @@ class FeelingsTiedToTopics(unittest.TestCase):
         el.update_stats(stats, state(), state(stress=.5), 'deadline', T0)
         self.assertGreater(stats['usual']['stress'], el.USUAL['stress'])
 
+    def test_the_history_in_words_the_writer_acts_on(self):
+        sore = el.topic_line({'subject': 'dad', 'it_usually_brings': 'sadness', 'times_before': 3})
+        self.assertIn("that's a relief", sore)
+        happy = el.topic_line({'subject': 'theo', 'it_usually_brings': 'happiness', 'times_before': 3})
+        self.assertIn('recall something from before', happy)
+
     def test_people_count_as_topics(self):
         people = {'anna': {'name': 'Anna', 'relation': 'sister'}}
         self.assertIn('anna', el.topics('my sister is coming over', people))
@@ -171,6 +177,12 @@ class Rhythm(unittest.TestCase):
         for text in ('so it happened', 'the thing', 'It finally happened.'):
             self.assertTrue(any("haven't named" in n for n in cc.ambiguity_notes(text)), text)
         self.assertEqual(cc.ambiguity_notes('the thing with my brother. he finally said it'), [])
+
+    def test_guessing_at_an_unnamed_thing_is_caught(self):
+        self.assertTrue(cc.guessed_unnamed('so it happened', "I'm glad it's done. What happened?"))
+        self.assertFalse(cc.guessed_unnamed('so it happened', 'Wait, what happened?'))
+        told = [{'role': 'user', 'content': 'my brother is telling our parents about his new job tonight'}]
+        self.assertFalse(cc.guessed_unnamed('so it happened', "I'm glad it's done.", told))
 
     def test_two_word_openers_are_tracked(self):
         history = [{'role': 'assistant', 'content': 'That sounds rough. I am here.'}, {'role': 'user', 'content': 'x'},

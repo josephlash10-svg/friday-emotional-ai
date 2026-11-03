@@ -16,6 +16,15 @@ WELLBEING = re.compile(r"(?i)(?<!\w)i(?:'m| am)(?: doing)? (?:good|fine|okay|ok|
 VAGUE_REFERENCE = re.compile(r"(?i)^\W*(?:so|well|ok|okay|yeah|and)?,? *(?:it|that|this) (?:finally |actually )?happened\W*$|"
                              r"^\W*(?:the|that|this) (?:thing|stuff|situation|news)\W*$")
 
+GUESSED = re.compile(r"(?i)\b(?:i'm|i am) (?:so |really )?(?:glad|sorry|happy|relieved)\b|^\W*(?:yeah,? )?i know\b|congrat|"
+                     r"\bthat's (?:great|awesome|amazing|terrible|awful|huge|exciting)\b")
+
+def guessed_unnamed(text, reply, history=()):
+    """A reply that reacts to an unnamed thing as good or bad (or claims to know it), when nothing earlier names it."""
+    if not VAGUE_REFERENCE.search(_clean(text)) or not GUESSED.search(_clean(reply)):
+        return False
+    return not any(len(content_words(r['content'])) >= 3 for r in history if r.get('role') == 'user')
+
 def ambiguity_notes(text, history=()):
     notes = []
     if WELLBEING.search(_clean(text)):

@@ -182,6 +182,19 @@ def topic_history(store, text, people=None, minimum_times=2, strength=.05):
     return sorted(found, key=lambda r: -r[2])[:3]
 
 
+HARD = {'sadness', 'fear', 'stress', 'pain', 'anger', 'shame', 'guilt', 'vulnerability', 'disgust', 'contempt', 'envy'}
+
+
+def topic_line(row):
+    """One subject's history in words the writer acts on (from the prepared topic_history rows)."""
+    name, feeling, times = row['subject'], row['it_usually_brings'], row['times_before']
+    if any(WORDS.get(n) == feeling for n in HARD):
+        return (f'{name}: has brought you {feeling} the {times} times it came up. Don\'t treat news about it as simply good '
+                f'(no "that\'s a relief"); react with care, like a friend who knows it has been hard')
+    return (f'{name}: has brought you {feeling} the {times} times it came up. Show you remember why it\'s a happy subject '
+            f'(say the name, recall something from before)')
+
+
 def topic_nudge(history, names, ceiling=.08, share=.6):
     """How much each feeling rises in anticipation when a subject with a history comes back (small and bounded)."""
     nudge = {}

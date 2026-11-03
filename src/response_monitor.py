@@ -287,6 +287,8 @@ def violations(reply,turn,names):
         issues.append(f'Invented memory: they never mentioned that ("{mentioned}"). Only refer to what they actually said.')
     if (experience.get('emotional_patterns') and cc.NO_PATTERNS.search(reply)):
         issues.append('Denied your own patterns: you do keep a record of your feelings (see what_you_know_about_your_own_feelings). Answer from it.')
+    if cc.guessed_unnamed(text,reply,history):
+        issues.append('Guessed what they meant: they referred to something they haven\'t named yet. Don\'t say you\'re glad or sorry or that you know; ask what it is, simply.')
     if cc.WRONG_SELF_FACT.search(own):
         issues.append('Wrong about yourself: you run on this computer, so a bigger model would make you slower here, not faster.')
     import time_sense
