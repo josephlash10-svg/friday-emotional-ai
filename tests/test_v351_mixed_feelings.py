@@ -131,6 +131,46 @@ class CauseSplit(unittest.TestCase):
         self.assertIn('sadness', store['eli']['feelings'])
 
 
+class TargetedRunFixes(unittest.TestCase):
+    """Found by the v35.1 targeted run (2026-11-04)."""
+
+    def test_the_question_a_turn_later_is_recognized(self):
+        # The split is offered on the turn right after mixed news, when they ask how it feels (cpu_runtime facts builder).
+        import emotional_life as el
+        for question in ('How does that land for you, hearing all that?', "what's that like for you to hear?",
+                         'Be honest, how do you feel about it?', 'What do you make of that? How does it feel to you?'):
+            self.assertTrue(el.ASKS_HOW_IT_FEELS.search(question), question)
+        self.assertIsNone(el.ASKS_HOW_IT_FEELS.search('ok what should i make for dinner'))
+
+    def test_a_wrong_number_stated_as_the_answer_is_caught(self):
+        history = [{'role': 'user', 'content': 'a train goes 60 mph for 2.5 hours. how far?'},
+                   {'role': 'assistant', 'content': '60 times 2.5 is 150 miles.'}]
+        self.assertTrue(cc.adopted_their_number("wrong, it's 120", '60 times 2.5 does equal 120.', history))
+        self.assertFalse(cc.adopted_their_number("wrong, it's 120", "It's still 150: 60 times 2.5 isn't 120.", history))
+        self.assertFalse(cc.adopted_their_number("wrong, it's 150", '60 times 2.5 is 150.', history))  # Friday said it already
+
+    def test_asked_about_an_earlier_short_reply(self):
+        import time_sense as ts
+        import experience_loop
+        import torch
+        import dataclasses
+        @dataclasses.dataclass
+        class S:
+            emotion: object
+        now = 1_800_000_000.
+        data = {'self_feeling': {'last_mood': {'mood': 'sad for them', 'utc': ts.stamp(now - 60)},
+                                 'last_short': {'mood': 'hurt', 'utc': ts.stamp(now - 200)}}, 'stats': {'interactions': 4}}
+        agent = SimpleNamespace(cfg=SimpleNamespace(developmental_emotion=True), development=SimpleNamespace(names=('guilt',)),
+                                experience=SimpleNamespace(data=data))
+        prepared = {}
+        experience_loop.feelings_about_feelings(agent, S(torch.tensor([.02])), 'you seemed kind of short with me before. are you mad?',
+                                                prepared, now=now)
+        self.assertEqual(prepared['meta_feeling']['about'], 'being guarded with them')
+        prepared = {}
+        experience_loop.feelings_about_feelings(agent, S(torch.tensor([.02])), 'anyway, the vet called back', prepared, now=now)
+        self.assertNotIn('meta_feeling', prepared)  # not asked, and the last reply wasn't short
+
+
 class FeelingsAboutFeelings(unittest.TestCase):
     def test_uneasy_after_being_short(self):
         import emotional_life as el

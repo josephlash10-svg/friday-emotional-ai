@@ -253,17 +253,22 @@ def behavior(state, before=None, text=''):
 
 
 # --- v35.1 Mixed feelings: which part brings which feeling (the cause split) ----------------------------------------
+PART_DIFFERENCE = .008  # how much more one part raises a feeling than the other part does, to call it that part's feeling
+
+
 def part_feelings(mixed, proposals, names, usual=None):
-    """[(part, feeling word)] for the good and the hard part of mixed news: the feeling each part's own appraisal raised
-    most above its usual level (closeness and engagement left out, as for subjects). Parts that raised nothing are left out."""
+    """[(part, feeling word)] for the good and the hard part of mixed news: the feeling each part raises most compared
+    with the other part, if it is at least at its usual level (closeness and engagement left out, as for subjects).
+    Compared with each other, not with the usual levels: "i'm kind of terrified" raised fear only a little above usual on
+    this engine, but clearly more than "i'm the new shift lead" did (v35.1 targeted run)."""
     usual = usual or USUAL
+    first, second = (dict(zip(names, p)) for p in proposals[:2])
     rows = []
-    for part, proposal in zip((mixed['good'], mixed['hard']), proposals[:2]):
-        levels = dict(zip(names, proposal))
-        above = sorted(((v - usual.get(n, USUAL.get(n, 0.)), n) for n, v in levels.items()
-                        if n not in ENGAGEMENT and n != 'connection'), reverse=True)
-        if above and above[0][0] >= ABOVE_USUAL:
-            rows.append((part, WORDS.get(above[0][1], above[0][1])))
+    for part, this, other in ((mixed['good'], first, second), (mixed['hard'], second, first)):
+        ahead = sorted(((this[n] - other[n], n) for n in names if n not in ENGAGEMENT and n != 'connection'
+                        and this[n] >= usual.get(n, USUAL.get(n, 0.))), reverse=True)
+        if ahead and ahead[0][0] >= PART_DIFFERENCE:
+            rows.append((part, WORDS.get(ahead[0][1], ahead[0][1])))
     return rows
 
 
@@ -297,6 +302,13 @@ def uneasy_after(last, text, now):
     if now - when > META_WINDOW:
         return None
     return {'mood': last['mood'], 'about': SHORT_MOODS[last['mood']]}
+
+
+# "How does that land for you?" one turn after mixed news (v35.1 targeted run: the split was in the note on the news
+# turn, and gone by the question).
+ASKS_HOW_IT_FEELS = re.compile(r"(?i)\b(?:how (?:does|did) (?:that|it|this|all that) (?:land|feel|sit)(?: (?:for|with|to) you)?|"
+                               r"what(?:'s| is| was) (?:that|it|this) like for you|how do you feel about (?:it|that|this|all)|"
+                               r"what do you make of (?:that|it|this)|how does (?:it|that) feel to you|how do you feel hearing)")
 
 
 def meta_line(meta, asked):

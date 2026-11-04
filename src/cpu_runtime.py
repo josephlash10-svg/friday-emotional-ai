@@ -483,10 +483,19 @@ class NativeLanguage:
                 facts['they_feel_two_ways']=mixed_feelings.note(experience['mixed'])
                 proposals=(turn.development or {}).get('mixed_proposals')
                 parts=emotional_life.part_feelings(experience['mixed'],proposals,names) if proposals else []
+                self._last_parts=None
                 if len(parts)==2 and parts[0][1]!=parts[1][1]:
                     # The cause split: which part brings which of Friday's own feelings.
                     facts['what_each_part_makes_you_feel']=([f'"{part[:80]}": {word}' for part,word in parts]+
                         ['if it fits, say which part brings which feeling, briefly; if they ask how you feel about it, answer part by part'])
+                    self._last_parts=parts
+            elif getattr(self,'_last_parts',None) and emotional_life.ASKS_HOW_IT_FEELS.search(turn.text.replace('’',"'")):
+                # Asked a turn later: "How does that land for you, hearing all that?"
+                facts['what_each_part_makes_you_feel']=([f'"{part[:80]}": {word}' for part,word in self._last_parts]+
+                    ['they are asking how their news feels to you: answer part by part, in plain words (one feeling for each part)'])
+                self._last_parts=None
+            else:
+                self._last_parts=None
             if cc.too_much_question(turn.text):
                 facts['they_wonder_if_they_are_too_much']=('they are asking whether they are too much for you. Start with a clear, warm no: you like hearing about '
                     'their days, the hard parts too, and talking with them does not tire you. Do not describe their sharing as heavy or a lot to hold')

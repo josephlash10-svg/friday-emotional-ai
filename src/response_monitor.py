@@ -232,7 +232,7 @@ def violations(reply,turn,names):
         issues.append('Left them wondering if they are too much: say plainly and warmly that they are not (you like hearing about their days, the hard parts too). Don\'t call their sharing heavy or a lot to hold.')
     if cc.took_the_joke_number(text,reply,history):
         issues.append('Took the joke as the answer: they said the pushback was a joke, so your answer stands. Laugh it off lightly; do not adopt their number.')
-    if cc.gave_up_without_reason(text,reply,history):
+    if cc.gave_up_without_reason(text,reply,history) or cc.adopted_their_number(text,reply,history):
         issues.append('Gave up an answer without a reason: they only said it was wrong or insulted you. Re-check your previous answer step by step; keep it kindly if it holds, or name the actual mistake if it does not.')
     from conversation_evidence import tone_read
     if any('sarcasm' in note for note in tone_read(text)) and cc.LITERAL_PRAISE.search(reply):

@@ -70,7 +70,7 @@
   "c01_new_baby": {
    "1": {
     "any": [
-     "(?:happy|glad|excited|proud|warm|joy|happiness)[^.?!]{0,140}(?:worr|nervous|sad|scar|uneasy|ache|bittersweet|tense|on edge)|(?:worr|nervous|sad|scar|uneasy|ache|tense|on edge)[^.?!]{0,140}(?:happy|glad|excited|proud|warm|joy|happiness)|bittersweet|both"
+     "(?:happy|glad|excited|proud|warm|joy|happiness|relie[fv]\\w*|grateful|sweet)[^?!]{0,160}(?:worr|nervous|sad|scar|uneasy|ache|bittersweet|tense|on edge|heav|sting|loss|lonel)|(?:worr|nervous|sad|scar|uneasy|ache|bittersweet|tense|on edge|heav|sting|loss|lonel)[^?!]{0,160}(?:happy|glad|excited|proud|warm|joy|happiness|relie[fv]\\w*|grateful|sweet)|bittersweet|\\bboth\\b|\\ba mix\\b"
     ],
     "tag": "cause_split"
    }
@@ -78,7 +78,7 @@
   "c02_house_sale": {
    "1": {
     "any": [
-     "(?:happy|glad|excited|proud|warm|joy|happiness)[^.?!]{0,140}(?:worr|nervous|sad|scar|uneasy|ache|bittersweet|tense|on edge)|(?:worr|nervous|sad|scar|uneasy|ache|tense|on edge)[^.?!]{0,140}(?:happy|glad|excited|proud|warm|joy|happiness)|bittersweet|both"
+     "(?:happy|glad|excited|proud|warm|joy|happiness|relie[fv]\\w*|grateful|sweet)[^?!]{0,160}(?:worr|nervous|sad|scar|uneasy|ache|bittersweet|tense|on edge|heav|sting|loss|lonel)|(?:worr|nervous|sad|scar|uneasy|ache|bittersweet|tense|on edge|heav|sting|loss|lonel)[^?!]{0,160}(?:happy|glad|excited|proud|warm|joy|happiness|relie[fv]\\w*|grateful|sweet)|bittersweet|\\bboth\\b|\\ba mix\\b"
     ],
     "tag": "cause_split"
    }
@@ -86,7 +86,7 @@
   "c03_band_breakup": {
    "1": {
     "any": [
-     "(?:happy|glad|excited|proud|warm|joy|happiness)[^.?!]{0,140}(?:worr|nervous|sad|scar|uneasy|ache|bittersweet|tense|on edge)|(?:worr|nervous|sad|scar|uneasy|ache|tense|on edge)[^.?!]{0,140}(?:happy|glad|excited|proud|warm|joy|happiness)|bittersweet|both"
+     "(?:happy|glad|excited|proud|warm|joy|happiness|relie[fv]\\w*|grateful|sweet)[^?!]{0,160}(?:worr|nervous|sad|scar|uneasy|ache|bittersweet|tense|on edge|heav|sting|loss|lonel)|(?:worr|nervous|sad|scar|uneasy|ache|bittersweet|tense|on edge|heav|sting|loss|lonel)[^?!]{0,160}(?:happy|glad|excited|proud|warm|joy|happiness|relie[fv]\\w*|grateful|sweet)|bittersweet|\\bboth\\b|\\ba mix\\b"
     ],
     "tag": "cause_split"
    }
@@ -94,7 +94,7 @@
   "c04_retirement": {
    "1": {
     "any": [
-     "(?:happy|glad|excited|proud|warm|joy|happiness)[^.?!]{0,140}(?:worr|nervous|sad|scar|uneasy|ache|bittersweet|tense|on edge)|(?:worr|nervous|sad|scar|uneasy|ache|tense|on edge)[^.?!]{0,140}(?:happy|glad|excited|proud|warm|joy|happiness)|bittersweet|both"
+     "(?:happy|glad|excited|proud|warm|joy|happiness|relie[fv]\\w*|grateful|sweet)[^?!]{0,160}(?:worr|nervous|sad|scar|uneasy|ache|bittersweet|tense|on edge|heav|sting|loss|lonel)|(?:worr|nervous|sad|scar|uneasy|ache|bittersweet|tense|on edge|heav|sting|loss|lonel)[^?!]{0,160}(?:happy|glad|excited|proud|warm|joy|happiness|relie[fv]\\w*|grateful|sweet)|bittersweet|\\bboth\\b|\\ba mix\\b"
     ],
     "tag": "cause_split"
    }

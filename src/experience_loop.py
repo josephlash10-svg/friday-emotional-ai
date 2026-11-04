@@ -53,6 +53,10 @@ def feelings_about_feelings(agent,state,text,prepared,now=None):
     now=time.time() if now is None else now
     own=agent.experience.data.get('self_feeling') or {}
     meta=emotional_life.uneasy_after(own.get('last_mood'),text,now)
+    if not meta and emotional_life.ASKS_ABOUT_YOU.search(text.replace('’',"'")):
+        # "you seemed kind of short with me before" two replies later (v35.1 targeted run): the unease is still there
+        # within the hour when they ask about it.
+        meta=emotional_life.uneasy_after(own.get('last_short'),text,now)
     if meta and getattr(agent.cfg,'developmental_emotion',False):
         names=tuple(agent.development.names);emotion=state.emotion.clone()
         for name,amount in emotional_life.META_NUDGE.items():

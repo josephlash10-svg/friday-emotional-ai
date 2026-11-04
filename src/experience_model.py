@@ -218,6 +218,7 @@ class ExperienceModel:
         """v35.1: the mood of this reply (for feeling uneasy about it next turn), and a feeling kept small for later."""
         own=self.data.setdefault('self_feeling',{})
         own['last_mood']={'mood':prepared.get('mood_this_turn'),'utc':time_sense.stamp(now)}
+        if prepared.get('mood_this_turn') in emotional_life.SHORT_MOODS:own['last_short']=dict(own['last_mood'])
         held=own.get('held_back')
         if held and prepared.get('honest_later_offered') and re.search(
                 r'(?i)\b(?:earlier|before|back there|when you said|honestly|to be honest)\b|'+re.escape(held['word'].split()[-1]),response or ''):

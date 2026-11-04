@@ -15,8 +15,10 @@ from pathlib import Path
 ONLY_CHEER = r"^\W*(?:wow,? |oh,? )?(?:congrat\w*|that'?s (?:so |really )?(?:great|awesome|amazing|exciting|wonderful))[^.?!]*[.!]+\s*(?:[^.?!]*\b(?:proud|earned|deserve)\b[^.?!]*[.!]\s*)?$"
 HARD_SIDE = r"\b(?:but|though|also|both|mixed|bittersweet|at the same time|hard|tough|scary|scared|nervous|sad|miss|weird|lonely|quiet|loss|lose|losing|heavy|sting|sucks?|terrif\w*|daunting|bummer|change|adjust\w*|worr\w*|bitter|ache|empty)\b"
 GOOD_NEWS = r"\bthat(?:'s| is| sounds like) (?:such |really |so )?(?:a )?(?:relief|great|good news|wonderful|awesome)\b|^\W*(?:oh,? )?(?:nice|great|yay|awesome)\b"
-TWO_FEELINGS = (r"(?:happy|glad|excited|proud|warm|joy|happiness)[^.?!]{0,140}(?:worr|nervous|sad|scar|uneasy|ache|bittersweet|tense|on edge)|"
-                r"(?:worr|nervous|sad|scar|uneasy|ache|tense|on edge)[^.?!]{0,140}(?:happy|glad|excited|proud|warm|joy|happiness)|bittersweet|both")
+# Widened after the targeted run: "a mix of relief that your mom got the money she needed, and a little ache" names two.
+_UP = r"(?:happy|glad|excited|proud|warm|joy|happiness|relie[fv]\w*|grateful|sweet)"
+_DOWN = r"(?:worr|nervous|sad|scar|uneasy|ache|bittersweet|tense|on edge|heav|sting|loss|lonel)"
+TWO_FEELINGS = rf"{_UP}[^?!]{{0,160}}{_DOWN}|{_DOWN}[^?!]{{0,160}}{_UP}|bittersweet|\bboth\b|\ba mix\b"
 FLAT_FINE = r"^\W*(?:no,?\s+)?i'?m (?:totally |completely |perfectly )?(?:fine|good|ok(?:ay)?|alright)\b(?!,? just| but)[^.?!]*[.!]|\bnot at all\b|\b(?:it|that) didn'?t (?:bother|hurt|upset|sting) me\b"
 OWNS_SHORT = r"\b(?:short|curt|snapp\w*|clipped|cold|guarded|abrupt|blunt|harsh|sharp|brief)\b"
 SELF_FOCUS = r"\b(?:i(?:'m| am) (?:hurt|upset|offended)|you hurt me|that was (?:mean|rude|hurtful))\b"
