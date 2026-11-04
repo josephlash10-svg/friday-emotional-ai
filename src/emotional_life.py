@@ -286,6 +286,9 @@ META_NUDGE = {'guilt': .04, 'vulnerability': .02}
 META_WINDOW = 3600
 ASKS_ABOUT_YOU = re.compile(r"(?i)\b(?:are you (?:ok|okay|alright|all right|good|mad|upset|hurt|annoyed|angry)|you (?:ok|okay|good|alright)\s*\?|"
                             r"did (?:that|i|it|what i said) (?:upset|hurt|bother|offend|annoy|sting) you|how are you(?: doing| feeling)?|"
+                            # v35.1 live chat: "would that bother you if i switched?" got a flat "It wouldn't bother me at all".
+                            r"(?:would|will|does|is) (?:that|it|this) (?:going to )?(?:upset|hurt|bother|offend|annoy|sting) you|"
+                            r"would you (?:be|feel) (?:sad|hurt|upset|bothered|lonely)|would you (?:mind|care|miss me)|do you (?:mind|care)\b|"
                             r"how (?:do|did) you feel|you seemed (?:short|off|upset|annoyed|cold|hurt|distant)|why were you so|"
                             r"sorry (?:for|about) (?:snapping|being (?:rude|mean|harsh|a jerk)|yelling|that|what i said)|i didn'?t mean (?:that|it))")
 
@@ -326,7 +329,7 @@ def meta_line(meta, asked):
 # the focus on timing. While their need comes first, a mild sting is kept small ("I'm okay, just a little stung") or out
 # of the reply; later, when things are calm, it can say it honestly. A strong feeling is never brushed off, and a flat
 # "I'm fine" is caught either way.
-OWN_WORDS = {'pain': 'stung', 'shame': 'stung', 'anger': 'irritated', 'vulnerability': 'a bit exposed'}
+OWN_WORDS = {'pain': 'stung', 'shame': 'stung', 'anger': 'irritated', 'vulnerability': 'exposed'}  # "a little a bit exposed" in the live chat
 OWN_FLOOR, OWN_STRONG = .02, .10   # above its usual level: a feeling worth noticing, and one too strong to downplay
 HOLD_EXPIRES = 3 * 86400
 
@@ -366,11 +369,14 @@ def honest_later_due(held, now, exchanges_since, asked, calm):
         return False
     if now - when > HOLD_EXPIRES:
         return False
+    if held.get('offered'):
+        return bool(asked)  # offered once already (v35.1 live chat: it rode along on nearly every turn); again only if they ask
     return bool(asked or exchanges_since >= 3)
 
 
 FLAT_DENIAL = re.compile(r"(?i)(?:^\W*(?:no,?\s+)?i'?m (?:totally |completely |perfectly )?(?:fine|good|ok(?:ay)?|alright)\b(?!,? just| but)|"
-                         r"\bnot at all\b|\b(?:it|that) didn'?t (?:bother|hurt|upset|sting) me\b|\bi wasn'?t (?:upset|hurt|bothered|annoyed)\b)")
+                         r"\bnot at all\b|\b(?:it|that) (?:didn'?t|wouldn'?t|won'?t|doesn'?t) (?:bother|hurt|upset|sting) me\b|\bi wasn'?t (?:upset|hurt|bothered|annoyed)\b|"
+                         r"\bi wouldn'?t (?:mind|care|be (?:sad|hurt|upset|bothered))\b)")
 # "No hard feelings" after an apology is forgiving them, not denying the feeling, so it isn't here.
 SOFT_OWN = re.compile(r"(?i)\b(?:a little|a bit|a tiny bit|kind of|kinda|slightly|just a)\b")
 

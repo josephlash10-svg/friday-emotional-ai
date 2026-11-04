@@ -28,9 +28,27 @@ SAID = re.compile(rf"(?i)\b(?:bittersweet|mixed feelings|conflicted|torn about|t
 SAID_PROGRESS = .3
 
 
+# Parts that aren't news about their life (v35.1 live chat, where nearly every message to Friday read as mixed):
+# talking to or about Friday ("you described the news", "i don't believe you"), questions, and remarks on Friday's last
+# reply ("that's a nice thing to say but it isn't an answer", "thank you").
+ABOUT_FRIDAY = re.compile(r"(?i)\b(?:you|your|you'?re|you'?d|you'?ll|yourself)\b")
+REMARK = re.compile(r"(?i)^(?:that'?s|that is|thanks|thank you|it isn'?t an answer|not an answer|fair|ok|okay|right|ha+|lol|fine|"
+                    r"whatever|good|wow|hm+|sure|yeah|yes|no|nope|wait)\b")
+
+
 def parts(text):
-    """The parts of a message that can carry their own feeling: two words or more."""
-    return [p.strip(' ,') for p in SPLIT.split(text or '') if p and len(p.strip(' ,').split()) >= 2]
+    """The parts of a message that can carry their own feeling about their life: two words or more, not a question,
+    not addressed to Friday, not a remark on Friday's last reply."""
+    found = []
+    for match in re.finditer(r'[^.;!?]+(?:[.;!?]+|$)', text or ''):
+        sentence = match.group(0)
+        question = sentence.rstrip().endswith('?')
+        for piece in SPLIT.split(sentence):
+            piece = (piece or '').strip(' ,.;!?')
+            if len(piece.split()) < 2 or question or ABOUT_FRIDAY.search(piece) or REMARK.search(piece):
+                continue
+            found.append(piece)
+    return found
 
 
 def detect(text, whole, read):

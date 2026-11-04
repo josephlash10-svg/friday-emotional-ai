@@ -225,6 +225,8 @@ class ExperienceModel:
             own['held_back']=None  # said honestly, once
         elif held and now-time_sense.parse(held['utc'])>emotional_life.HOLD_EXPIRES:
             own['held_back']=None
+        elif held and prepared.get('honest_later_offered'):
+            own['held_back']=dict(held,offered=True)
         if prepared.get('held_back_now'):
             own['held_back']=dict(prepared['held_back_now'],utc=time_sense.stamp(now),exchange=self.data['stats']['interactions'])
 
@@ -603,7 +605,9 @@ class ExperienceModel:
                 return f'Nice to meet you, {shown}.'
             if current['kind']=='relationship' and self.data['relationship']['source']=='user_description':
                 return 'That’s how I’ll understand our relationship: '+self.data['relationship']['description']+'. We can revisit that understanding as our shared experience develops.'
-        if current and current.get('scope_uncertain') and current['kind']=='correction':
+        # v35.1 live chat: three longer messages that pointed out a contradiction, or started with "no.", got this line in 2 s
+        # instead of a reply. It is for a bare correction only; anything that says what is wrong goes to the writer.
+        if current and current.get('scope_uncertain') and current['kind']=='correction' and len(text.split())<=8:
             return 'I can see that you’re correcting something, but I’m not yet sure which interpretation to change. Could you clarify the part you want me to revisit?'
         if re.search(r'\bhow\b.*\b(?:you use|you learn|use|learn from)\b.*\b(?:corrections?|feedback)\b',query):
             return 'When you correct me, I keep that feedback attached to the exchange it concerns. In a similar situation, I can retrieve the lesson and revise my expectations and appraisal. If I’m unsure what you’re correcting, I ask rather than assume. That learning survives saving and restarting; it does not guarantee that every future interpretation will be right.'

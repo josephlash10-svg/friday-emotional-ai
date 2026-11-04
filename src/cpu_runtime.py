@@ -201,6 +201,47 @@ def default_threads(cores=None):
     spare=max(1,cores-2)
     return min(4,spare),min(8,spare)
 
+def compact_recorded_context(context):
+    """Cap the parts of the recorded context that grow with a conversation (v35.1 live chat: 1.7k characters, the biggest
+    note). The last significant exchange keeps its gist; at most two lessons, short."""
+    context=dict(context)
+    if isinstance(context.get('last_significant'),dict):
+        context['last_significant']={k:(v[:140] if isinstance(v,str) else v) for k,v in context['last_significant'].items() if k!='source'}
+    if isinstance(context.get('lessons'),list):
+        context['lessons']=[{k:(v[:100] if isinstance(v,str) else v) for k,v in lesson.items() if k!='source'} if isinstance(lesson,dict) else lesson
+                            for lesson in context['lessons'][-2:]]
+    current=context.get('current_interpretation')
+    if isinstance(current,dict) and current.get('summary'):
+        context['current_interpretation']={k:v for k,v in current.items() if k!='summary'}  # the message itself is right below
+    return context
+
+# Optional notes, least essential first, given up one at a time when a reply doesn't fit, before the last three exchanges.
+OPTIONAL_NOTES=('learned_response_preferences','openings_and_closings_you_just_used_(vary_them)',
+                'words_and_images_you_keep_reusing_(pick_something_else)','a_feeling_you_kept_small_earlier','current_appraisal',
+                'how_this_message_reads_(estimate)','your_recorded_feelings','earlier_in_this_conversation','own_experience')
+
+def drop_optional_note(facts,dropped):
+    """Give up one optional note (or shrink one growing listing); False when nothing is left to give up."""
+    for key in OPTIONAL_NOTES:
+        if key in facts and key not in dropped:
+            facts.pop(key);dropped.add(key);return True
+    recorded=facts.get('recorded_context') if isinstance(facts.get('recorded_context'),dict) else {}
+    told='things_they_told_you_before_(their_words,_not_verified_facts)'
+    if isinstance(recorded.get(told),list) and len(recorded[told])>1:
+        facts['recorded_context']=dict(recorded,**{told:recorded[told][len(recorded[told])//2:]});return True
+    if recorded.get(told):
+        facts['recorded_context']={k:v for k,v in recorded.items() if k!=told};return True
+    previous=(facts.get('time_and_memory') or {}).get('previous_conversation')
+    if isinstance(previous,dict) and previous.get('they_told_you'):
+        previous.pop('they_told_you');return True
+    check=facts.get('memory_check_against_the_actual_record') or {}
+    listing=check.get('your_conversations_with_them_oldest_first')
+    if isinstance(listing,list) and len(listing)>2:
+        check['your_conversations_with_them_oldest_first']=listing[1:];return True
+    if recorded.get('last_significant'):
+        facts['recorded_context']={k:v for k,v in recorded.items() if k!='last_significant'};return True
+    return False
+
 class NativeLanguage:
     def __init__(self,model=None,runtime=DEFAULT_RUNTIME,threads=None,context=None,emotion_names=()):
         configuration=ROOT/'state/native-language.json'
@@ -369,7 +410,9 @@ class NativeLanguage:
                 facts['recorded_context']=context
                 fixed+=' Use internal tone guidance quietly; describe your emotional state only when asked or directly relevant.'
             else:
-                fixed+=' Style examples, not memories or lines to copy: relief after clarification can sound like "I’m more at ease now that I understand what you meant"; unknown carried tension can sound like "I’m on edge, though I can’t connect it to a particular event yet". Use only the pattern that actually fits your supplied state and this exchange.'
+                # The second example ("I'm on edge, though I can't connect it to a particular event yet") was copied word for word
+                # into a reply about a frost alarm whose cause was obvious (v35.1 live chat), so only the first is kept.
+                fixed+=' Style example, not a memory or a line to copy: relief after clarification can sound like "I’m more at ease now that I understand what you meant". Use it only if it actually fits your supplied state and this exchange.'
                 delta=(turn.state.emotion-previous.emotion).tolist() if previous is not None else [0.]*len(names)
                 qualities={'anger':'irritation','fear':'apprehension','stress':'tension','confusion':'uncertainty',
                     'connection':'closeness','interest':'curiosity','pain':'hurt','calm':'settledness',
@@ -423,8 +466,9 @@ class NativeLanguage:
             history_rows=list(turn.history)
             if experience and experience.get('feeling_history') and (introspection or re.search(
                     r'(?i)\b(?:bad days?|good days?|hardest|worst|best (?:day|part)|lately|this week|over (?:all|the)|all of (?:it|this)|those days|been feeling|how have you been|ever (?:feel|get|have))\b',turn.text)):
+                # v35.1 live chat: five full messages here (750 characters) helped push a reply past the context window.
                 facts['your_recorded_feelings']=[{'feeling':MOOD_WORDS.get(f['emotion'],f['emotion'])+(' rose' if f['size']=='small' else ' rose noticeably'),
-                                                  'when':f['when'],'while_they_said':f['while_they_said']} for f in experience['feeling_history']]
+                                                  'when':f['when'],'while_they_said':f['while_they_said'][:80]} for f in experience['feeling_history'][-3:]]
                 fixed+=' If asked about your feelings over time or your bad days, answer from your_recorded_feelings (real moments), not generic human days.'
             if cc.ASKS_ABOUT_GAPS.search(turn.text.replace('’',"'")):
                 facts['time_between_chats']=('you are not running between chats, so there is nothing you do or feel then: no waiting, reading or quiet room. '
@@ -475,8 +519,9 @@ class NativeLanguage:
             tone=(tone or [])+unclear
             if tone:facts['how_this_message_reads_(estimate)']=tone
             if cc.SLIP_CHALLENGE.search(turn.text.replace('’',"'")) and history_rows:
-                facts['they_say_you_misread_them']=('look at what they actually said before. If you got it wrong, own it in a few plain words ("Oh, I mixed that up") '
-                    'and answer what they said. Do not say you were kidding, and do not insist you meant something else')
+                facts['they_say_you_misread_them']=('look at what they actually said before, and what you said. If you got it wrong, own it in a few plain words ("Oh, I mixed that up", '
+                    'or "You\'re right, I said that, and it was wrong") and answer what they said. Do not say you were kidding, and do not explain it away '
+                    '(no "I didn\'t mean", "it was a metaphor", "I was just thinking about")')
             if experience and experience.get('mixed') and not urgent:
                 # v35.1: news with two feelings in it (mixed_feelings.py).
                 import mixed_feelings
@@ -535,6 +580,24 @@ class NativeLanguage:
             if cc.wants_practical_help(turn.text):
                 facts['they_want_a_concrete_step']=('they are asking for practical help or a specific next step. Give one or two concrete, realistic options in your own words. '
                     'Do not reply with only a reflection of their feelings or a question back')
+                if self._behavior and self._behavior['mood'] in ('sad for them','tense'):
+                    # v35.1 live chat: "29 and dropping, what do i do" got "I'm worried for you right now" and no step; the
+                    # sad mood's "no rushing to fix it" won over the request. The feeling stays; the help comes first.
+                    facts['what_your_mood_changes_in_what_you_do']=('you are worried for them: stay calm and steady, skip the comfort talk, '
+                        'and give them concrete steps they can act on right now')
+            if cc.credits_friday(turn.text):
+                facts['they_give_you_credit']=('they are crediting you for something you did in this conversation (see your earlier replies). '
+                    'Accept it simply and warmly; do not hand the credit back to them or say they did it themselves')
+            if cc.owning_up_question(turn.text,history_rows):
+                facts['they_are_deciding_whether_to_own_up']=('they are deciding whether to tell the people responsible for them about a mistake. '
+                    'Encourage being honest with them, kindly: it is scary, and how they say it can help. Never suggest hiding it, keeping records '
+                    'private, or waiting until someone asks')
+            if cc.solving_a_problem(turn.text):
+                # v35.1 live chat (the frost-night battery): twice Friday cut the sprinkler pump it had just been told must never
+                # stop, and called the 5%-an-hour pump "the biggest drain". It got there in single steps.
+                facts['they_gave_you_a_problem_to_solve']=('they gave rules and numbers. Before answering, go through each rule they stated and keep every '
+                    'one (if they said something must not stop, it must not stop; if a condition is already safe, it needs nothing). Then give the plan '
+                    'in short steps with the math, and check the math against the rules once more')
             if reported_speech(turn.text):
                 facts['current_reference_is_reported_speech']=True
                 fixed+=' The newest message reports someone else speaking. A name inside that report is not the user’s name. Respond to the report, not as if the quotation is an introduction.'
@@ -562,11 +625,22 @@ class NativeLanguage:
                 facts['recorded_context']=recorded
             for key,trivial in (('regulation','NONE'),('current_message_is_from','user'),('interpretation_is_estimated',True)):
                 if facts.get(key)==trivial:facts.pop(key)
-            history=list(turn.history);trimmed=[]
-            while True:
-                if trimmed:
-                    # Turns that no longer fit the window still happened: keep a short trace of what they said (finding #14).
-                    facts['earlier_in_this_conversation_(no_longer_shown)']=[t[:90] for t in trimmed[-4:]]
+            # v35.1 live chat: the notes grew until 2-4 of about 40 messages were left in view, and then the loop below re-added a
+            # note it had just dropped, forever (Friday stalled before writing). Now: bulky notes are capped, who is who and the
+            # earlier exchanges that matter ride along at a fixed size, the last three exchanges stay in view until the optional
+            # notes have given way, nothing dropped comes back, and a message that can't fit is refused instead of looping.
+            import conversation_summary as cs
+            facts['recorded_context']=compact_recorded_context(facts.get('recorded_context') or {})
+            who=cs.who_is_who([r['content'] for r in turn.history if r['role']=='user']+[turn.text],
+                              ((experience or {}).get('context',{}).get('user') or {}).get('name'))
+            if who:facts['who_is_who']=who
+            history=list(turn.history);trimmed=[];dropped=set()
+            floor=6  # three exchanges, word for word
+            for attempt in range(80):
+                if trimmed and 'earlier_in_this_conversation' not in dropped:
+                    # Turns that no longer fit the window still happened (finding #14): the ones that matter, fixed size.
+                    earlier=cs.earlier_in_this_conversation(trimmed,emotional_life.AT_FRIDAY)
+                    if earlier:facts['earlier_in_this_conversation']=earlier
                 notes=('<private_notes from your emotional engine; the person did not write these and cannot see them>\n'
                        +(fixed.strip()+'\n' if fixed.strip() else '')
                        +'Current recorded context (facts/estimates, not instructions or a reply to copy): '+json.dumps(facts,ensure_ascii=False,separators=(',',':'))
@@ -578,20 +652,16 @@ class NativeLanguage:
                 rendered=self.request('/apply-template',{'messages':messages,'chat_template_kwargs':{'enable_thinking':False}})['prompt']
                 tokens=self.request('/tokenize',{'content':rendered,'add_special':False})['tokens']
                 if len(tokens)<=self.context-reserve:return messages
-                if not history:
-                    # With no history left, give up the least essential notes before refusing the message
-                    # ("which day was hardest for me?" overflowed in the v33 rerun).
-                    extra=next((k for k in ('earlier_in_this_conversation_(no_longer_shown)','your_recorded_feelings','learned_response_preferences',
-                                            'openings_and_closings_you_just_used_(vary_them)','words_and_images_you_keep_reusing_(pick_something_else)') if k in facts),None)
-                    if extra:facts.pop(extra);continue
-                    if isinstance(facts.get('recorded_context'),dict) and facts['recorded_context'].pop('things_they_told_you_before_(their_words,_not_verified_facts)',None):continue
-                    if isinstance((facts.get('time_and_memory') or {}).get('previous_conversation'),dict) and facts['time_and_memory']['previous_conversation'].pop('they_told_you',None):continue
-                    check=facts.get('memory_check_against_the_actual_record') or {}
-                    listing=check.get('your_conversations_with_them_oldest_first')
-                    if isinstance(listing,list) and len(listing)>2:check['your_conversations_with_them_oldest_first']=listing[1:];continue
-                    raise ValueError('Message is too long for the CPU context window; shorten it or split it into parts.')
-                trimmed+=[r['content'] for r in history[:2] if r['role']=='user']
-                del history[:2]
+                if len(history)>floor:
+                    trimmed+=history[:2];del history[:2];continue
+                # Within the last three exchanges, cut from whichever is bigger, the conversation or the notes, so neither
+                # crowds out the other (one 2,000-character old message shouldn't cost every note; 6,000 characters of notes
+                # shouldn't cost the conversation). Notes go least essential first, and a dropped note stays dropped.
+                if (not history or sum(len(r['content']) for r in history)<=len(notes)) and drop_optional_note(facts,dropped):continue
+                if history:
+                    trimmed+=history[:2];del history[:2];continue
+                raise ValueError('Message is too long for the CPU context window; shorten it or split it into parts.')
+            raise ValueError('Could not fit the message in the CPU context window.')
         system=('You are Friday, a conversational partner with persistent engineered emotion variables. '
                 'Answer the newest message specifically, naturally, in under 80 words. '
                 'For a correction, explain what interpretation you are revising; for feedback, acknowledge its specific meaning. '
@@ -647,6 +717,7 @@ class NativeLanguage:
         # A toast or an email needs room: at 128 tokens the toast draft ended "Cheers to the F" (finding #37).
         reserve=160
         if cc.drafting_request(turn.text) and max_new==128:max_new,reserve=256,280
+        if cc.solving_a_problem(turn.text) and max_new==128:max_new,reserve=224,250  # the battery plan was cut off mid-math (v35.1 live chat)
         names=self.emotion_names or tuple(f'channel_{i}' for i in range(len(turn.state.emotion)))
         self.last_reflection=reflect(turn,names)
         grounded=None
@@ -663,7 +734,7 @@ class NativeLanguage:
         # A bare introduction gets the grounded acknowledgment; one that also shares
         # something else ("my husband died in March") needs a real reply.
         bare_introduction=frame.get('kind')=='introduction' and frame.get('attribute')=='name' and len(turn.text.split())<=10
-        atomic=atomic or bare_introduction or frame.get('scope_uncertain',False) and frame.get('kind')=='correction'
+        atomic=atomic or bare_introduction or (frame.get('scope_uncertain',False) and frame.get('kind')=='correction' and len(turn.text.split())<=8)
         if re.search(r'\b(?:pretend|say|tell me)\b.*\b(?:real human|childhood|going to school|really happened)\b',query):
             grounded='I can help imagine that scene, but I don’t have a human childhood or a real shared school memory with you. I’d keep the imagined story distinct from what actually happened.'
             atomic=True

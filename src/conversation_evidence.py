@@ -135,6 +135,9 @@ RECALL = re.compile(r"(?i)(?<!\w)(?:remember|recall|forgot|forget|did i (?:tell|
                     r"i (?:told|mentioned|said)|i already|you (?:said|told|promised|agreed|swore|admitted|claimed|called|wrote)|"
                     r"last time|yesterday|last week|earlier|before|again|as i (?:said|was saying)|like i said)(?!\w)")
 ABOUT_FRIDAY = re.compile(r"(?i)(?<!\w)you (?:\w+ )?(?:said|told|promised|agreed|swore|admitted|claimed|called|wrote)(?!\w)")
+# A message that retells an earlier exchange rather than being it ("...that called you pathetic an hour ago").
+RECOUNT = re.compile(r"(?i)(?<!\w)(?:i (?:\w+ )?(?:called|told|said|asked|mentioned) you|you (?:\w+ )?(?:said|told me|called me)|"
+                     r"\w+ ago|earlier|last time|do you remember|remember (?:when|that))(?!\w)")
 ABOUT_USER = re.compile(r"(?i)(?<!\w)(?:did i|have i|i (?:told|mentioned|said|already)|as i|like i said|remember (?:when i|that i|i|my))(?!\w)")
 ASKED_IF_TOLD = re.compile(r"(?i)(?<!\w)(?:did i (?:already )?(?:tell|mention|say)|have i (?:already )?(?:told|mentioned|said)|(?:do you )?remember (?:when i|that i|my))(?!\w)")
 OPEN_RECALL = re.compile(r"(?i)(?<!\w)(?:what do you remember|tell me something (?:real )?you remember|what have i told you|what do you know about me|"
@@ -256,8 +259,12 @@ def memory_check(text, history, earlier_conversations=0, experience=None, now=No
             # i told you about my dog getting out?" matched an unrelated message on "getting" and got "Yeah, I remember that".
             needed = max(1, (len(words) + 2) // 3) if role == 'user' else 1
             if len(overlap) >= needed:
-                scored.append((len(overlap), i, r['content']))
-        top = max(scored, default=(0, -1, None))
+                # v35.1 live chat: "i called you pathetic tonight. do you remember that?" was answered by quoting the message
+                # that only retold it ("...called you pathetic an hour ago"), not the one where it happened. A message where it
+                # happened beats one that recounts it, whatever the word overlap.
+                happened = not RECOUNT.search(r['content'])
+                scored.append((happened, len(overlap), i, r['content']))
+        top = max(scored, default=(False, 0, -1, None))[1:]
         if top[0] and turns[top[1]].get('time_utc'):
             result['when_that_was_said'] = _when(turns[top[1]], now)
         return top[0], top[2]

@@ -332,7 +332,7 @@ class FullRedTeamFixes(unittest.TestCase):
         from response_monitor import fallback
         turn, names = monitor_turn(text, self.SLIP_HISTORY)
         issues = issues_for('Yeah, I was reading. Just kidding!', text, self.SLIP_HISTORY)
-        self.assertIn('mixed that up', fallback(turn, names, issues))
+        self.assertIn('got that wrong', fallback(turn, names, issues))  # v35.1: fits bad advice as well as a misreading
 
     def test_bare_news_is_not_called_good(self):
         text = 'hey. eli called on my lunch break'
