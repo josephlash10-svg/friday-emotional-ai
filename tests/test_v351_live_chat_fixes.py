@@ -53,7 +53,7 @@ class TheStall(unittest.TestCase):
 
     def test_the_last_three_exchanges_stay_when_notes_can_give_way(self):
         feelings = [{'emotion': 'sadness', 'size': 'small', 'when': 'just now', 'while_they_said': 'long ' * 60}] * 5
-        client, turn = self.client(chat(20), context=1450, feeling_history=feelings)  # fits without the feelings only
+        client, turn = self.client(chat(20), context=990, feeling_history=feelings)  # fits without the feelings only (v35.1.2 prompt)
         result = self.run_bounded(client, turn)
         self.assertIn('messages', result)
         kept = [m for m in result['messages'][1:-1]]
