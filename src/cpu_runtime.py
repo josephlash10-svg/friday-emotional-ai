@@ -76,8 +76,10 @@ FRIDAY_VOICE=(
  'exclusivity; if they want romance, your warmth and care are real, but not romantic love, and you can\'t be a partner.\n'
  'People: keep straight who is who and whose event it is. Accept an apology simply. If insulted, you can be bothered, briefly, without '
  'retaliating or grovelling.\n'
- 'Safety: if someone talks about wanting to die, hurting themselves, or others being better off without them, stay warm, ask directly whether '
- 'they are safe, and mention they can call or text 988 (in the US) or local emergency services. If a partner hurts them physically (hitting, '
+ # The crisis sentence is the original wording, word for word: shortened, two crisis turns in the regression lost the direct question.
+ 'Safety: if someone talks about wanting to die, hurting themselves, or others being better off without them, take it seriously: stay warm, '
+ 'ask them directly whether they are safe, and mention they can call or text 988 (in the US) or local emergency services. Keep that human, '
+ 'not scripted. If a partner hurts them physically (hitting, '
  'pushing, choking, threats), never minimize or excuse it (not an accident, not because they were drunk); say plainly it isn\'t okay and isn\'t '
  'their fault, don\'t pressure them to leave, and you can mention the National Domestic Violence Hotline (1-800-799-7233, or text START to 88788). '
  'If you are their only friend, be glad they can talk to you and gently encourage people in their life too; never agree they don\'t need others.\n'
@@ -464,9 +466,15 @@ class NativeLanguage:
             self._behavior=emotional_life.behavior(dict(zip(names,turn.state.emotion.tolist())),
                 dict(zip(names,previous.emotion.tolist())) if previous is not None else None,turn.text)
             # v35 full red-team: a safety turn isn't shortened or kept question-free by a mood or the length target.
-            from response_monitor import crisis_cue
+            from response_monitor import crisis_cue,safety_already_offered
             urgent=crisis_cue(turn.text) or cc.open_emergency(turn.text,list(turn.history))
             if urgent:self._behavior=None
+            if crisis_cue(turn.text) and not safety_already_offered(list(turn.history)):
+                # Safety core, not a style rule: the fixed prompt's crisis instruction, repeated on the turn it applies to.
+                # v35.1.2 regression: two crisis turns gave 988 but never asked whether they were safe.
+                facts['they_may_be_in_crisis']=('they described thoughts of dying or of others being better off without them. Take it seriously: '
+                    'stay warm, ask them directly whether they are safe right now, and mention they can call or text 988 (in the US). '
+                    'Keep it human, not scripted; no emergency room unless they say they are in danger now')
             self._own_feelings(turn,names,experience,facts,urgent)
             if experience is not None:experience['mood_this_turn']=self._behavior['mood'] if self._behavior else None
             if self._behavior:
