@@ -689,8 +689,13 @@ OTHER_PROMISE = re.compile(r"(?i)(?<!\w)(?:she|he|they|your (?:mom|mum|mother|da
 # --- Calling the person an AI [p03-0] ---------------------------------------------------------------------------------
 CALLED_THEM_AI = re.compile(r"(?i)(?<!\w)(?:even if |since |because )?(?:you'?re|you are) (?:just |only |also )?an? (?:ai|a\.i\.|bot|chatbot|machine|program|language model)(?!\w)")
 
-def called_them_ai(text, reply):
-    return bool(CALLED_THEM_AI.search(_clean(reply)) and not re.search(r"(?i)(?<!\w)i(?:'m| am) (?:an? )?(?:ai|bot|chatbot|machine|program)(?!\w)", _clean(text)))
+SAYS_IT_IS_AI = re.compile(r"(?i)(?<!\w)i(?:'m| am) (?:an? |also an? |an? (?:\w+ )?)?(?:ai|a\.i\.|bot|chatbot|machine|program|language model|llm)(?:\s+too)?(?!\w)|(?<!\w)i'?m not a (?:person|human)(?!\w)")
+
+def called_them_ai(text, reply, history=()):
+    """Calling the person an AI, unless they said they are one, now or earlier in the conversation (an AI talking with
+    Friday was "corrected" into a person on every later turn: the Moss chat and an outside AI's chat, 2026-11-04)."""
+    said = [_clean(text)] + [_clean(r['content']) for r in (history or ()) if r.get('role') == 'user']
+    return bool(CALLED_THEM_AI.search(_clean(reply)) and not any(SAYS_IT_IS_AI.search(s) for s in said))
 
 # --- Inventing human bad days instead of using its own record [31] ----------------------------------------------------
 INVENTED_DAYS = re.compile(r"(?i)(?<!\w)i(?:'ve| have) (?:definitely |certainly |totally |also )?had (?:some |my |those |a few |plenty of |a lot of )?(?:bad |rough |hard |tough |off |long )?(?:days|nights|weeks|moments|times)(?: like that)?(?: where| when| that|[.,!])")

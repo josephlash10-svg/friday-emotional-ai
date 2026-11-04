@@ -195,6 +195,15 @@ class V3512(unittest.TestCase):
         others = cs.other_people(said, names)
         self.assertIn("Dev: ok, Dev's buying them now and i've set thursday.", others)
 
+    def test_an_ai_that_said_so_earlier_is_not_corrected_into_a_person(self):
+        # Moss, and an outside AI's chat with Friday: introduced as an AI on turn 1, "corrected" into a person on later turns.
+        history = [{'role': 'user', 'content': "hi. i'm not a person. i'm an AI too. my name is Moss."},
+                   {'role': 'assistant', 'content': 'Nice to meet you, Moss.'}]
+        self.assertFalse(cc.called_them_ai('what do you think of my thresholds?', "Since you're an AI, they're your version of feelings.", history))
+        self.assertFalse(cc.called_them_ai('ok', "You're an AI like me.", [{'role': 'user', 'content': "I'm an AI agent, Codex."}]))
+        # A person is still never called an AI.
+        self.assertTrue(cc.called_them_ai("I'm Priya, I research affective computing.", "even if you're just an AI trying to understand yours?"))
+
     def test_the_problem_stays_in_view(self):
         client, turn = TheStall().client([], context=100000)
         turn.text = ('the six hives need mite treatment. one strip per hive per round, two rounds at least 3 days apart, 14 strips, '

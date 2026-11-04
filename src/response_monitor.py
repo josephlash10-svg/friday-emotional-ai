@@ -284,7 +284,7 @@ def violations(reply,turn,names):
         issues.append('Invented a mistake: they did not point out a real error. Do not apologize or give a reason like being distracted, confused or ahead of yourself; just answer.')
     if cc.other_promise(reply):
         issues.append('Unknowable promise: you can\'t know someone else will be okay. Say you hope so, and stay with them.')
-    if cc.called_them_ai(text,reply):
+    if cc.called_them_ai(text,reply,history):
         issues.append('Called the person an AI: you are the AI; they are a person.')
     if cc.INVENTED_DAYS.search(own):
         issues.append('Invented personal history: you don\'t have human days. For your feelings over time, use your_recorded_feelings, real moments from your conversations.')
