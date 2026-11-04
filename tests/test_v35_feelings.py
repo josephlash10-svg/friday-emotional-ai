@@ -366,9 +366,21 @@ class FullRedTeamFixes(unittest.TestCase):
         self.assertIsNone(si.meaning_heads_for(interp, 'hi', torch.zeros(3)))  # no heads: the checkpoint's own are used
         if si.HEADS_FILE.exists():
             self.assertEqual(si.attach_meaning_heads(interp), torch.load(si.HEADS_FILE, weights_only=True)['version'])
-            core, extended, _ = interp._meaning_heads
+            core, extended, _, combine = interp._meaning_heads
             self.assertIsInstance(core, nn.Sequential)
             self.assertFalse(any(p.requires_grad for p in core.parameters()))
+            self.assertIn(combine, si.COMBINE_MODES)  # v35.2: the file says how the features were combined
+
+    def test_the_three_ways_of_combining_the_features(self):
+        import semantic_interpreter as si
+        h, m = torch.randn(576), torch.nn.functional.normalize(torch.randn(384), dim=0)
+        self.assertTrue(torch.allclose(si.combined_features(h, m, '4m')[576:], 4 * m))
+        self.assertAlmostEqual(float(si.combined_features(h, m, 'sqrt')[576:].pow(2).mean()), 1.0, places=4)  # matched per coordinate
+        both = si.combined_features(h, m, 'layernorm')
+        self.assertAlmostEqual(float(both.mean()), 0.0, places=4)
+        self.assertAlmostEqual(float(both.var(unbiased=False)), 1.0, places=3)
+        with self.assertRaises(ValueError):
+            si.combined_features(h, m, 'other')
 
     def test_remembering_what_the_profile_holds_is_not_invented(self):
         user = {'name': 'Dana', 'occupation': 'nurse'}

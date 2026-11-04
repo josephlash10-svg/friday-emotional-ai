@@ -17,14 +17,23 @@ LABELS=(('ordinary','none',0),('correction','intent',0),('correction','answer',-
 # the held-out natural, formal and extended sets better. They ship as release/appraisal-heads.pth and are kept off the
 # module tree, so checkpoints (which hold someone's memories) are unchanged; without the file or the MiniLM model,
 # Friday uses the heads in its checkpoint.
-MEANING_SCALE=4.  # the MiniLM vector is unit length; the layer-normed LM features have unit variance per dimension
+# How the two are combined is recorded in the heads file ('combine'); files without it used '4m'. The factor 4 does not
+# match the scales: the LM features have norm 24 and a mean square of 1 per coordinate, 4m has norm 4 and 0.042 (measured
+# after an outside audit, 2026-11-04). v35.2 trains '4m', 'sqrt' (sqrt(384) m, matched per coordinate) and 'layernorm'
+# (one LayerNorm over [h, m]) and keeps whichever passes every gate best (src/train_meaning_appraisal.py).
+MEANING_SCALE=4.
+COMBINE_MODES=('4m','sqrt','layernorm')
 HEADS_FILE=Path(__file__).resolve().parents[1]/'release/appraisal-heads.pth'
 
 def meaning_head_modules(width):
     return (nn.Sequential(nn.Linear(width,64),nn.Tanh(),nn.Linear(64,9)),nn.Sequential(nn.Linear(width,64),nn.Tanh(),nn.Linear(64,4)))
 
-def combined_features(features,vector):
-    return torch.cat((features,MEANING_SCALE*vector.to(features.dtype)))
+def combined_features(features,vector,mode='4m'):
+    vector=vector.to(features.dtype)
+    if mode=='4m':return torch.cat((features,MEANING_SCALE*vector))
+    if mode=='sqrt':return torch.cat((features,vector*vector.numel()**.5))
+    if mode=='layernorm':return nn.functional.layer_norm(torch.cat((features,vector)),(features.numel()+vector.numel(),))
+    raise ValueError(f'Unknown way to combine the features: {mode}')
 
 def attach_meaning_heads(interpreter,path=HEADS_FILE):
     """Load the shipped heads onto the interpreter (as a plain attribute). Returns the version or None."""
@@ -34,7 +43,7 @@ def attach_meaning_heads(interpreter,path=HEADS_FILE):
     core,extended=meaning_head_modules(saved['width'])
     core.load_state_dict(saved['core']);extended.load_state_dict(saved['extended'])
     core.eval();extended.eval();core.requires_grad_(False);extended.requires_grad_(False)
-    object.__setattr__(interpreter,'_meaning_heads',(core,extended,saved['version']))
+    object.__setattr__(interpreter,'_meaning_heads',(core,extended,saved['version'],saved.get('combine','4m')))
     return saved['version']
 
 def meaning_heads_for(interpreter,text,features):
@@ -44,7 +53,7 @@ def meaning_heads_for(interpreter,text,features):
     import meaning_recall
     vectors=meaning_recall.index().embed([text])
     if vectors is None:return None
-    return heads[0],heads[1],combined_features(features,vectors[0])
+    return heads[0],heads[1],combined_features(features,vectors[0],heads[3] if len(heads)>3 else '4m')
 
 class SemanticInterpreter(nn.Module):
     def __init__(self,width,hidden=96):

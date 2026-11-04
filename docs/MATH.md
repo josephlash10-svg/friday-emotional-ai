@@ -26,18 +26,30 @@ $$e = (\text{relevance},\ \text{progress},\ \text{certainty},\ \text{control},\ 
   **Since v35** the shipped appraisal heads read $h$ together with the MiniLM sentence vector $m$ (all-MiniLM-L6-v2, unit length,
   the model Friday already uses to recall memories by meaning):
 
-  $$h' = [\,h,\ 4m\,] \in \mathbb{R}^{960}, \qquad (960 \to 64 \to 9 \text{ and } 960 \to 64 \to 4,\ \text{sigmoid})$$
+  $$h' = [\,h,\ \sqrt{384}\,m\,] \in \mathbb{R}^{960}, \qquad (960 \to 64 \to 9 \text{ and } 960 \to 64 \to 4,\ \text{sigmoid})$$
 
-  The factor 4 does **not** put $m$ on the scale of $h$ (an earlier version of this page said it did; corrected after an outside
-  audit, 2026-11-04). Measured on ten messages: $\|h\| = 24.0 = \sqrt{576}$ with a mean square of 1.00 per coordinate, while
-  $\|4m\| = 4.0$ with a mean square of 0.042. So $4m$ is 6× smaller in norm and 24× smaller per coordinate. What the first layer
-  learns from is how coordinates vary *between* messages, and there the gap is smaller: across messages, $h$ has a variance of only
-  about 0.10 per coordinate (most of its size is the same for every message). The heads were trained with the factor 4 and pass their gates; whether matching the scales does better (for
-  example $\sqrt{384}\,m$, or a LayerNorm over $[h, m]$) is tested before the heads are next retrained. With $h$ alone, sad news said casually ("i cried in the
-  supply closet") read as joy. These heads are trained from scratch on the same table plus a 28th category, casual sadness
-  (1,477 texts, `src/train_meaning_appraisal.py`), and must beat the earlier heads on the held-out natural messages and pass
-  every gate. They ship as `release/appraisal-heads.pth`, outside the checkpoint; without the file or the MiniLM model,
-  the checkpoint's own heads above are used.
+  **Since v35.2** $m$ is scaled by $\sqrt{384}$, which puts it on the scale of $h$: both now have a mean square of about 1 per
+  coordinate. Measured on ten messages, $\|h\| = 24.0 = \sqrt{576}$ (mean square 1.00 per coordinate). The v35 heads used
+  $4m$, which an earlier version of this page wrongly said matched the scales (corrected after an outside audit, 2026-11-04).
+  $\|4m\| = 4.0$ with a mean square of 0.042, so $4m$ was 6× smaller in norm and 24× smaller per coordinate. Across messages,
+  $h$ varies by only about 0.10 per coordinate, because most of its size is the same for every message.
+
+  Three ways of combining were trained on identical data and seed: $4m$, $\sqrt{384}\,m$, and a LayerNorm over $[h, m]$
+  (`semantic_interpreter.combined_features`). Only $\sqrt{384}\,m$ passed every gate. $4m$ was worse on casual sadness, and the
+  LayerNorm was worse on casual sadness and on the extended negatives. The mode is saved with the heads (`combine`); heads
+  saved without it are read as $4m$.
+
+  With $h$ alone, sad news said casually ("i cried in the supply closet") read as joy. The heads are trained from scratch on 30
+  categories (1,539 training texts, `src/train_meaning_appraisal.py`): casual sadness came in v35. Two more came in v35.2 from the Moss
+  live chat:
+  - **blame for a consequence Friday caused**, which the v35 heads read as good news (progress +0.32, joy 0.11);
+  - **longer insults**, which read weakly (anger 0.03–0.06).
+
+  The new heads must be no worse than the shipped ones on everything the shipped ones already did. They must be at least 30%
+  better on the new held-out messages, and they must pass direction gates through the real appraisal, such as *blame raises
+  guilt*. Results are in `docs/meaning-appraisal-training.json`; the targets are synthetic engineering targets, not human
+  labels. The heads ship as `release/appraisal-heads.pth`, outside the checkpoint; without the file or the MiniLM model, the
+  checkpoint's own heads above are used.
 
 Finally, the relevance is scaled by Friday's goal weights $g$: $e_{\text{rel}} \leftarrow e_{\text{rel}}\,(0.5 + 0.5\,g_{\text{goal}})$.
 
@@ -126,8 +138,15 @@ $$\pi(a) = \lambda\,\mathrm{softmax}(W_r\,\text{gut}) + (1-\lambda)\,\mathrm{sof
 
   **On the real scale, the reflex never takes over.** The switch point $\mu = 0.75$ was set before the engine's real, quiet scale was known.
   In the v35.1 live chat (74 exchanges, including a frost emergency and repeated insults), $\mu$ peaked at 0.20, so $\lambda$ never exceeded
-  0.0125 even with no deliberation: the deliberate policy always decides. The arbitration is due to be recalibrated to the real scale (v35.2),
-  as the v35 thresholds were.
+  0.0125 even with no deliberation: the deliberate policy always decides.
+
+  **Why it wasn't recalibrated in v35.2.** Over 640 real turns (the Moss chat and the v35.1.2 regression), $\mu$ had median 0.048, 97th
+  percentile 0.131, 99th 0.173 and maximum 0.261. Every turn above 0.15 was real distress (a crisis, abuse, a relapse, a frost
+  emergency). A pure rescale works: map $\mu$ onto the nominal scale with rest $\approx 0.03$ as 0 and 0.15 as the switch 0.75, and
+  keep the formula. But a probe showed that the reflex was never taught. It was trained while it had no say, so on a crisis, abuse,
+  a relapse or a dog's surgery it picks *answer* or *clarify*, where the deliberate policy picks *comfort* or *set boundary*. With
+  the rescale it would get 76–98% of the say on those turns. The switch stays at 0.75 until the reflex is trained on labeled
+  distress turns with the rescaled share in the loop (a change to the release checkpoint, with its own gates).
 
 - **Vitality.** A signed well-being estimate from need satisfaction, smoothed with decay 0.8.
 
