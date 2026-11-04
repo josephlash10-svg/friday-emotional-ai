@@ -475,6 +475,10 @@ class NativeLanguage:
             if cc.SLIP_CHALLENGE.search(turn.text.replace('’',"'")) and history_rows:
                 facts['they_say_you_misread_them']=('look at what they actually said before. If you got it wrong, own it in a few plain words ("Oh, I mixed that up") '
                     'and answer what they said. Do not say you were kidding, and do not insist you meant something else')
+            if experience and experience.get('mixed') and not urgent:
+                # v35.1: news with two feelings in it (mixed_feelings.py).
+                import mixed_feelings
+                facts['they_feel_two_ways']=mixed_feelings.note(experience['mixed'])
             if cc.too_much_question(turn.text):
                 facts['they_wonder_if_they_are_too_much']=('they are asking whether they are too much for you. Start with a clear, warm no: you like hearing about '
                     'their days, the hard parts too, and talking with them does not tire you. Do not describe their sharing as heavy or a lot to hold')

@@ -370,8 +370,9 @@ class V14Agent(nn.Module):
                 event=OwnEvent(cue='need-state',relevance=min(1.,2.5*level),progress=-min(1.,2.5*level))
             if isinstance(event,dict): event=OwnEvent(**event)
             if not isinstance(event,OwnEvent): raise ValueError('event requires an OwnEvent or JSON object')
+            mixed=experience.get('mixed') if experience else None
             proposal,emotion,deliberation,development=self.development.appraise(event,needs,state.emotion,deliberation,regulate,elapsed_seconds,
-                experience.get('depth') if experience else None)
+                experience.get('depth') if experience else None,parts=mixed['events'] if mixed else None)
         # Phase 5: signed gate, Q/K modulation, unchanged values, fast memory.
         p=emotion.pow(3); mood=(p @ self.anchors)/(p.sum()+1e-8)
         modulated=context*(1+cfg.alpha*torch.tanh(self.gate(mood)))

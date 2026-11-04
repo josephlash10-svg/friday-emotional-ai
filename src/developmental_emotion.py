@@ -81,12 +81,18 @@ class DevelopmentalEmotion(nn.Module):
         decay=torch.exp(-math.log(2)*min(elapsed_seconds,2592000)/half_life)
         return rest_target+(previous-rest_target)*decay
 
-    def appraise(self,event,needs,previous,deliberation=0.,regulate=True,elapsed_seconds=0.,depth=None):
+    def appraise(self,event,needs,previous,deliberation=0.,regulate=True,elapsed_seconds=0.,depth=None,parts=None):
         previous=self.recovered_emotion(previous,elapsed_seconds)
         x=self.features(event,needs)
-        raw=self.appraiser(x).sigmoid()
-        # Zero personal relevance has a fixed low appraisal irrespective of words.
-        proposal=(1-event.relevance)*raw.new_full(raw.shape,.025)+event.relevance*raw
+        def propose(e,features):
+            raw=self.appraiser(features).sigmoid()
+            # Zero personal relevance has a fixed low appraisal irrespective of words.
+            return (1-e.relevance)*raw.new_full(raw.shape,.025)+e.relevance*raw
+        proposal=propose(event,x)
+        # v35.1 mixed feelings: news with a good side and a hard side. Each side is appraised too and the stronger reaction
+        # for each feeling is kept, so joy and sadness can both rise instead of cancelling out in one reading.
+        for part in parts or ():
+            proposal=torch.maximum(proposal,propose(part,self.features(part,needs)))
         if depth is not None:
             if not 0<=depth<=1: raise ValueError('Emotional depth must be in [0,1]')
             coarse=proposal.clone()
@@ -131,6 +137,7 @@ class DevelopmentalEmotion(nn.Module):
         details['elapsed_seconds']=elapsed_seconds
         details['emotional_depth']=depth
         details['carryover_arousal_check']=carryover_check
+        if parts:details['mixed_parts']=[asdict(part) for part in parts]
         return regulated,emotion,selected_deliberation,details
 
     @torch.no_grad()

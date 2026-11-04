@@ -306,6 +306,8 @@ def violations(reply,turn,names):
     if cc.hard_subject_as_good_news(reply,experience.get('topic_history')):
         issues.append('Called it good news: this subject has been hard before (see subjects_with_a_history_for_you) and they haven\'t said how it went. '
                       'Don\'t call it a relief or good; react with care and let them tell you.')
+    elif experience.get('mixed') and cc.only_cheered(reply):
+        issues.append('Picked one side: they feel two ways about this (see they_feel_two_ways). Don\'t only celebrate; name the hard part too.')
     elif cc.bare_news_as_good(text,reply):
         issues.append('Called it good news: they haven\'t said how it went. Don\'t call it great or a relief; ask, simply.')
     if cc.guessed_unnamed(text,reply,history):

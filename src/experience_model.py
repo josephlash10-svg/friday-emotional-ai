@@ -491,6 +491,11 @@ class ExperienceModel:
             if scope=='external_fact':event=replace(event,progress=0.,safety=0.,agency=0.)
         goal='continuity' if scope=='relationship' else 'understanding' if kind=='correction' else 'usefulness'
         event=replace(event,relevance=event.relevance*(.5+.5*self.data['goals'][goal]))
+        # v35.1: news with two feelings in it. Each side is appraised too, scaled like the whole (mixed_feelings.py).
+        mixed=proposed.get('_mixed') if isinstance(proposed,dict) and inference is not None and kind not in ('correction','feedback') and scope!='external_fact' else None
+        if mixed:
+            scale=.5+.5*self.data['goals'][goal]
+            mixed=dict(mixed,events=[replace(OwnEvent(cue=event.cue,**part),relevance=part['relevance']*scale) for part in mixed['events']])
         if applicable and kind=='correction':
             event=replace(event,certainty=max(event.certainty,.85),novelty=.15,support=max(event.support,.5))
         if frame.get('scope_uncertain'): event=replace(event,certainty=min(event.certainty,.55))
@@ -498,7 +503,7 @@ class ExperienceModel:
         levels[0]=.35 if kind=='correction' and scope=='answer' else .5
         levels[1]=.35 if frame['confidence']<.65 else .5
         applied=[v['id'] for v in applicable]
-        return {'frame':frame,'event':event,'feedback':feedback,'levels':levels,
+        return {'frame':frame,'event':event,'mixed':mixed,'feedback':feedback,'levels':levels,
                 'applied_lessons':applied,'context':self.context(frame,query_vector),'depth':self.depth,'query_vector':query_vector,
                 'semantic_key':proposed.get('_semantic_key') if isinstance(proposed,dict) else None,
                 'semantic_class':proposed.get('_semantic_class') if isinstance(proposed,dict) else None}

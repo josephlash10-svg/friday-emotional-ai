@@ -118,23 +118,34 @@ class SemanticInterpreter(nn.Module):
                 'evidence':text[:400],'summary':text[:160],'lesson':lesson,'attribute':attribute,'value':value,
                 'interpreter':'trained_semantic_head','memory_support':memory_support,'scope_confidence':scope_confidence,
                 '_semantic_key':latent.tolist(),'_semantic_class':index}
-        meaning=meaning_heads_for(self,text,features) if hasattr(self,'event_head') and bool(self.event_trained) else None
+        reading=self.own_event_reading(text,features)
+        if reading is not None:
+            result['_own_event'],how=reading
+            if how:result['appraisal_features']=how
+            # v35.1: news that carries two feelings at once (mixed_feelings.py).
+            import mixed_feelings
+            mixed=mixed_feelings.detect(text,result['_own_event'],
+                                        lambda part:(self.own_event_reading(part,decoder.meaning_features(part)) or (None,))[0])
+            if mixed:result['_mixed']=mixed
+        return result
+
+    def own_event_reading(self,text,features):
+        """(appraisal of what the text means to Friday, which features it read) or None without trained heads."""
+        if not (hasattr(self,'event_head') and bool(self.event_trained)):return None
+        meaning=meaning_heads_for(self,text,features)
         if meaning is not None and self.extended:
             core_head,extended_head,both=meaning
             numbers=core_head(both).sigmoid();numbers[[1,5,8]]=2*numbers[[1,5,8]]-1
             extra=extended_head(both).sigmoid()
             numbers[0]=torch.maximum(numbers[0],.7*extra.max())
-            result['_own_event']=dict(zip(EVENT_FIELDS+EXTENDED_FIELDS,torch.cat((numbers,extra)).tolist()))
-            result['appraisal_features']='language_model+meaning'
-        elif hasattr(self,'event_head') and bool(self.event_trained):
-            numbers=self.event_head(features).sigmoid()
-            numbers[[1,5,8]]=2*numbers[[1,5,8]]-1
-            if self.extended:
-                extra=self.extended_event_head(features).sigmoid()
-                # A strong own appraisal itself has personal relevance; this
-                # estimate is distinct from accepting the user's report as fact.
-                numbers[0]=torch.maximum(numbers[0],.7*extra.max())
-                numbers=torch.cat((numbers,extra))
-            fields=EVENT_FIELDS+EXTENDED_FIELDS if self.extended else EVENT_FIELDS
-            result['_own_event']=dict(zip(fields,numbers.tolist()))
-        return result
+            return dict(zip(EVENT_FIELDS+EXTENDED_FIELDS,torch.cat((numbers,extra)).tolist())),'language_model+meaning'
+        numbers=self.event_head(features).sigmoid()
+        numbers[[1,5,8]]=2*numbers[[1,5,8]]-1
+        if self.extended:
+            extra=self.extended_event_head(features).sigmoid()
+            # A strong own appraisal itself has personal relevance; this
+            # estimate is distinct from accepting the user's report as fact.
+            numbers[0]=torch.maximum(numbers[0],.7*extra.max())
+            numbers=torch.cat((numbers,extra))
+        fields=EVENT_FIELDS+EXTENDED_FIELDS if self.extended else EVENT_FIELDS
+        return dict(zip(fields,numbers.tolist())),None

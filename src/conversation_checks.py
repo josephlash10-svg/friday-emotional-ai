@@ -35,6 +35,16 @@ BARE_NEWS = re.compile(r"(?i)\b(?:called|texted|messaged|emailed|came (?:by|over
 NEWS_TONE = re.compile(r"(?i)!|:\)|\b(?:great|good|nice|awesome|amazing|excit\w*|happy|yay|finally|love\w*|glad|thrilled|best|bad|awful|"
                        r"terrible|sad|ugh|upset|worried|scared|sucks?|hate|weird|again)\b")
 
+# v35.1 mixed feelings: "i got the promotion but i'm kind of terrified" answered with only "Congratulations!".
+CHEER = re.compile(r"(?i)congrat|\b(?:that'?s|that is|how) (?:so |really )?(?:great|awesome|amazing|exciting|wonderful|huge)\b|\byay\b|\bproud of you\b")
+HARD_SIDE = re.compile(r"(?i)\b(?:but|though|also|both|mixed|bittersweet|at the same time|hard|tough|scary|scared|nervous|sad|miss|weird|"
+                       r"lonely|quiet|loss|lose|losing|heavy|sting|stings|sucks?|ache|terrif\w*|daunting|bummer|change|adjust\w*)\b")
+
+def only_cheered(reply):
+    """A reply that celebrates without a word for the hard side."""
+    clean = _clean(reply)
+    return bool(CHEER.search(clean) and not HARD_SIDE.search(clean))
+
 def bare_news_as_good(text, reply):
     """A short bit of news that doesn't say how it went, greeted as good news."""
     clean = _clean(text)

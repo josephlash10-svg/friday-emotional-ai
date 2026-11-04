@@ -30,6 +30,19 @@ class DevelopmentalTests(unittest.TestCase):
         result=sequence_checks(self.agent.development)
         self.assertTrue(all(result['checks'].values()),result)
 
+    def test_mixed_news_keeps_both_feelings(self):
+        # v35.1: a good side and a hard side read as one event cancel out; appraised as parts, both feelings rise.
+        joy,sadness=EMOTIONS.index('joy'),EMOTIONS.index('sadness')
+        good=OwnEvent(cue='conversation:understanding',relevance=.8,progress=.6,certainty=.8,control=.6,support=.3)
+        hard=OwnEvent(cue='conversation:understanding',relevance=.8,progress=-.6,certainty=.8,control=.3,support=.3)
+        whole=OwnEvent(cue='conversation:understanding',relevance=.8,progress=0.,certainty=.8,control=.45,support=.3)
+        alone=self.turn(whole).proposal
+        both=self.turn(whole,experience={'mixed':{'events':[good,hard]}})
+        self.assertGreater(both.proposal[joy],alone[joy]+.05)
+        self.assertGreater(both.proposal[sadness],alone[sadness]+.05)
+        self.assertEqual(len(both.development['mixed_parts']),2)
+        self.assertEqual(both.development['event']['progress'],0.)  # learning still sees the whole message
+
     def test_own_relevance_not_emotional_words_and_no_implicit_growth(self):
         zero=self.agent.initial_state();event=OwnEvent()
         neutral=self.turn(event,text='hello')
