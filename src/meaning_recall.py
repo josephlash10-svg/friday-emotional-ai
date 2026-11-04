@@ -1,4 +1,4 @@
-"""Recall by meaning (stage M1 in docs/governed-self-improvement.md).
+"""Recall by meaning (stage M1, better recall; write-up in docs/m1-recall-by-meaning.md).
 
 Word overlap missed most memories ("what did I say about my health?" never matched "the doctor said my blood pressure
 is too high") and once matched the wrong one on a filler word. A small sentence-embedding model (all-MiniLM-L6-v2,

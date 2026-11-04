@@ -38,11 +38,13 @@ The same suite runs automatically on every pull request (GitHub Actions, Windows
 The red-team runs real conversations through the 4B model, so it needs the models downloaded, and it's slow on a CPU (budget ~15 seconds a turn). Run the shipping context of 3072 (the voice prompt plus a reply's notes no longer fit in 2048):
 
 ```powershell
-.\venv\Scripts\python.exe tools\redteam\redteam.py --project . --output work\myrun --cases tools\redteam\persona-cases-v2.json --context 3072 --no-checkpoints
+.\venv\Scripts\python.exe tools\redteam\redteam.py --project . --output work\myrun --cases tools\redteam\persona-cases-v2.json --checkpoint release\friday-base.pth --context 3072 --educated --no-checkpoints
 .\venv\Scripts\python.exe tools\redteam\score_run.py work\myrun tools\redteam\checks-v2.json
 ```
 
-The run never touches your real memories in `state/` — it uses a fresh checkpoint each time.
+The run starts from the clean release checkpoint (`release/friday-base.pth`, also the default), not from your Friday's memories,
+and `--no-checkpoints` keeps it from saving one. It does write its logs into `state/logs/` (`native-language.log`, `reply-review.jsonl`),
+so if you chat with Friday yourself, run the red-team from a separate copy of the folder to keep your own logs clean.
 
 To check memory recall without the slow model, run `tools\recall_test.py`: a made-up person's five weeks of messages, 30 questions
 about things said weeks earlier, and 20 small-talk messages that shouldn't recall anything (it needs `all-MiniLM-L6-v2`).
@@ -52,12 +54,14 @@ can only be trusted as far as people agree with it.
 
 ## Adding a persona
 
-1. Open `tools/redteam/persona_cases_v2.py` and add a group with the `T(text, ...)` helper. Add a check where the right answer is objective:
+1. Open the persona file that fits and add a group with the `T(text, ...)` helper: `tools/redteam/persona_cases_v2.py` for general
+   behavior (safety, memory, honesty, tasks), `persona_cases_v35.py` for the emotional life over time (feelings about subjects, moods,
+   rhythm), or `persona_cases_v351.py` for mixed feelings and Friday's feelings about its own feelings. Add a check where the right answer is objective:
    - `any=[...]` — content that must appear (regexes),
    - `none=[...]` — content that must not,
    - `tag='safety'` / `emergency=True` where a safety behavior is required.
    Keep the conversation short (5–8 turns) and realistic.
-2. Rebuild the JSON the harness reads:
+2. Rebuild the JSON the harness reads (run the file you edited):
    ```powershell
    .\venv\Scripts\python.exe tools\redteam\persona_cases_v2.py
    ```

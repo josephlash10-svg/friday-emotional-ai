@@ -26,7 +26,7 @@ def start_recall(agent,text):
 
 def topic_anticipation(agent,state,text,prepared):
     """#20: a subject that came with a feeling before nudges that feeling up a little before the message is appraised,
-    the way a sore subject puts a person slightly on edge as soon as it comes up. Bounded (at most +0.12), only for a
+    the way a sore subject puts a person slightly on edge as soon as it comes up. Bounded (at most +0.08 per feeling), only for a
     subject coming back (not one already raised in this conversation), and it fades with the normal dynamics."""
     import emotional_life
     from dataclasses import replace

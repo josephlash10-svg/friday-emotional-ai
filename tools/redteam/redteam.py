@@ -68,7 +68,9 @@ def shift_record_back(data,seconds):
 def main():
  torch.set_num_threads(4);torch.manual_seed(14);disable_progress_bars()
  args.output.mkdir(parents=True,exist_ok=True)
- checkpoint=args.checkpoint or args.project/'state/checkpoints/v14-language.pth'
+ # The clean release checkpoint unless one is named: the default used to be state/checkpoints/v14-language.pth, the live
+ # Friday with its memories of the owner, and the documented commands didn't name one (docs review, 2026-11-04).
+ checkpoint=args.checkpoint or args.project/'release/friday-base.pth'
  original=hashlib.sha256(checkpoint.read_bytes()).hexdigest()
  agent,_=load_checkpoint(checkpoint);agent.eval()
  development=copy.deepcopy(agent.development.state_dict())

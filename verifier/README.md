@@ -1,6 +1,8 @@
 # Verifier, stage V0: the gold set
 
-The verifier will decide which of Friday's replies are good enough to learn from ([`docs/governed-self-improvement.md`](../docs/governed-self-improvement.md)).
+The verifier will decide which of Friday's replies are good enough to learn from: the first part of a plan in which Friday's
+language model is taught from its own best replies, with a verifier that can be trusted not to reward flattery. The stages are
+V0 (a gold set of human labels, here), V1 (judges measured against it), V2 (hardening against tricks) and V3 (checking replies live).
 It is only as trustworthy as the human labels it is measured against. V0 builds those labels.
 
 **Gold labels come from people only.** A model's judgment of a reply, including Claude's or Friday's own, is never a gold label:

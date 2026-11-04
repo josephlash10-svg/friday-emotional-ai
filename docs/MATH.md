@@ -126,6 +126,53 @@ emotional state rendered as words ("mild curiosity, faint tension"), the apprais
 memory facts. A rule-based reply monitor checks specific invariants (false memories, denying feelings it has, missed safety checks, promises it
 can't know, confusing who said what…). It regenerates or repairs a draft that fails.
 
+## 6. An emotional life over time (`emotional_life.py`, v35 and v35.1)
+All thresholds are on the engine's real, quiet scale: an insult moves a feeling by about 0.10.
+
+**Usual levels.** Each feeling has a usual level $u_i$, starting from fixed medians and following the record slowly, once per exchange:
+
+$$u_i \leftarrow u_i + 0.02\,(s_i - u_i)$$
+
+**Statistics about its own feelings.** A feeling *rises* in an exchange when $\Delta s_i \ge 0.04$ and it stands at least 0.02 above the median
+change of all 19 (the general lift at the start of a conversation is not a feeling). It is *up* while $s_i \ge 0.10$; a spell lasts from the
+first exchange it is up to the first one it isn't. Friday keeps the rises, peaks, spells and what was being talked about, and describes them
+when asked.
+
+**Feelings tied to subjects.** When a subject $k$ (a person, or a content word) comes up, a feeling $i$ is recorded for it if it rose, or if
+$s_i - u_i \ge 0.02$ (closeness and the engagement channels are left out: they rise with almost anything shared). A subject has a history once it
+came up at least twice before and one of its feelings peaked at $\ge 0.05$, or sat $\ge 0.02$ above usual on at least half of its mentions.
+When such a subject comes back, the feeling rises a little *before* the message is appraised, the way a sore subject puts a person on edge:
+
+$$s_i \leftarrow s_i + \min(0.08,\ 0.6\,\text{peak}_{k,i})$$
+
+**Mood changes behavior.** A feeling is notable when it is above a floor and either rose by 0.03 or is 1.5× the floor. The strongest
+notable mood, by value over floor, picks what Friday does: hurt (pain, sadness or shame at 0.08, when the message is aimed at Friday),
+irritated (anger 0.06), sad for them (0.08), tense (fear or stress 0.10), unsure (confusion 0.08), curious (0.10) or warm (0.15). Each sets a
+length scale (0.6–1.0), whether to ask questions, and whether humor fits.
+
+**Mixed feelings (v35.1).** The message is split into parts at "but", "though", "at the same time" and sentence ends. Questions, parts
+addressed to Friday, and remarks on its last reply are not news and are left out. Each part $p$ is appraised on its own ($e_p$). The
+message is mixed when the best and the worst part are far apart and the worst is a loss,
+
+$$\max_p e_{p,\text{prog}} - \min_p e_{p,\text{prog}} \ge 0.3, \qquad \min_p e_{p,\text{prog}} \le -0.05,$$
+
+unless the loss is a past difficulty followed by the outcome ("it was hard but worth it"). Saying it outright ("bittersweet", "happy and sad")
+counts too, with parts at progress $\pm 0.3$. The engine then keeps the stronger reaction for each feeling, before the depth blending:
+
+$$a = \max\big(a(e),\ a(e_{\text{good}}),\ a(e_{\text{hard}})\big) \quad \text{(per channel)}$$
+
+**Which part brings which feeling.** For each part, its feeling is the channel it raises most compared with the other part,
+$\arg\max_i \big(a_i(e_p) - a_i(e_{\bar p})\big)$, if that difference is at least 0.008 and the channel is at least at its usual level. A
+subject keeps the feeling of its own part; people named anywhere in the message get all of them.
+
+**Feelings about its own feelings (v35.1).** Within an hour after a short or guarded reply (the irritated or hurt mood), and unless the new
+message is another jab, a little unease reaches the engine before the next appraisal: guilt $+0.04$, feeling exposed $+0.02$.
+
+**Downplaying, with timing (v35.1).** Friday's own hard feeling is the largest of pain, shame, anger and feeling exposed above its usual
+level, $o = \max_i (s_i - u_i)$. It is noticed at $o \ge 0.02$ and too strong to downplay at $o \ge 0.10$. While the other person's need
+comes first, a noticed but not strong feeling is kept small (or out of the reply) and remembered; it may be said honestly once, when
+things are calm and they ask, or after three exchanges, within three days.
+
 ## Limits
 The appraisal specification and training targets are hand-designed. The text→appraisal heads are tiny and read two small frozen encoders
 (135M and 22M parameters). The language model only *describes* the state; it isn't trained on it. In the last red-team where every reply

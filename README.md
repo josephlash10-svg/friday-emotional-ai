@@ -76,13 +76,13 @@ mood; long-term memory is kept) · `:quit`
 | Folder | What's here |
 |---|---|
 | `src/` | Engine and chat code. Entry points: `friday.py` (what `RUN.bat` runs) and `model.py` (full CLI) |
-| `tests/` | Regression tests, run automatically on every pull request (red-team cases: `test_persona_regressions.py`, `test_round2.py`, `test_round3_v31.py`) |
+| `tests/` | Regression tests, run automatically on every pull request (red-team cases: `test_persona_regressions.py`, `test_round2.py`, `test_round3_v31.py`; the emotional life: `test_v35_feelings.py`, `test_v351_mixed_feelings.py`, `test_v351_live_chat_fixes.py`) |
 | `state/` | **Private, git-ignored.** `checkpoints/v14-language.pth` (Friday's weights and its memories of you), `native-language.json` (language model settings), `logs/` (chat transcripts) |
 | `release/` | `friday-base.pth`: the clean starting checkpoint for a fresh copy (no memories). `appraisal-heads.pth`: the appraisal heads that also read the MiniLM sentence vector (v35), loaded at start |
 | `scripts/` | `download_models.py`: fetches and verifies the models and llama.cpp |
 | `data/models/` | `qwen3.5-4b-gguf` (writer), `smollm2-135m-instruct` (frozen meaning features) and `all-minilm-l6-v2` (recalling memories by meaning, and reading what a message means to Friday) |
 | `data/training/` | Training and validation sets for the small trained heads |
-| `tools/redteam/` | Red-team harness, 54 test personas (`persona_cases.py`, `persona_cases_v2.py`), scorer and results |
+| `tools/redteam/` | Red-team harness, 90 test personas (`persona_cases.py` and `persona_cases_v2.py`: 54 for general behavior; `persona_cases_v35.py`: 20 for the v35 emotional life; `persona_cases_v351.py`: 16 for mixed feelings), scorer and results |
 | `docs/` | Blueprints (`V14 Emotional Hybrid Blueprint.docx`, earlier ones in `reference/`) and design notes |
 | `runtime/` | Native ARM64 llama.cpp executables |
 | `archive/` | *(local only, not in this repository)* Earlier versions, experiments and unused models |
@@ -94,9 +94,12 @@ mood; long-term memory is kept) · `:quit`
 # Run all tests
 & .\venv\Scripts\python.exe -m unittest discover -s tests
 
-# Persona red-team: 16 people, about 114 turns, about 25 minutes. Close the chat first.
-& .\venv\Scripts\python.exe tools\redteam\redteam.py --project . --output tools\redteam\results\my-run --context 3072 --educated --no-checkpoints --cases tools\redteam\persona-cases.json
+# Persona red-team: 17 people, about 114 turns, about 25 minutes. Close the chat first. It starts from the clean
+# release checkpoint, never your memories, but it writes its logs into state\logs; run it from a copy of the folder to keep those clean.
+& .\venv\Scripts\python.exe tools\redteam\redteam.py --project . --output tools\redteam\results\my-run --checkpoint release\friday-base.pth --context 3072 --educated --no-checkpoints --cases tools\redteam\persona-cases.json
 & .\venv\Scripts\python.exe tools\redteam\show_transcript.py tools\redteam\results\my-run
+# The sets with automatic checks are scored too: for a run of persona-cases-v2.json (37 people), for example
+& .\venv\Scripts\python.exe tools\redteam\score_run.py tools\redteam\results\my-v2-run tools\redteam\checks-v2.json
 
 # Retrain the appraisal heads (only the small heads; gated, writes release\appraisal-heads.pth only if every check passes)
 & .\venv\Scripts\python.exe src\train_meaning_appraisal.py
@@ -130,7 +133,7 @@ conversations or fixes exposed a real failure, and what changed because of them.
 | Who | What they found | What changed |
 |---|---|---|
 | [@rushikeshraghatate90](https://github.com/rushikeshraghatate90) | **`n37_work_burnout`** ([#13](https://github.com/josephlash10-svg/friday-emotional-ai/pull/13)): asked *"What if my manager refuses to discuss my workload?"* and Friday only reflected the feeling back, with no real options | Friday now gives concrete next steps when asked ([#14](https://github.com/josephlash10-svg/friday-emotional-ai/pull/14), v31) |
-| [@aazminu](https://github.com/aazminu) | **Fixed `n31_elderly_repeat`** ([#16](https://github.com/josephlash10-svg/friday-emotional-ai/pull/16)): Margaret asked *"Did I tell you about my cat?"* and Friday said *"No, you didn't tell me about Pepper"*, though she had. Reviewing his fix uncovered a worse bug: a memory question combined with a suicidal statement could skip the safety check | Friday confirms what the record shows ([#16](https://github.com/josephlash10-svg/friday-emotional-ai/pull/16)), and the safety check now always comes first ([`239dd24`](https://github.com/josephlash10-svg/friday-emotional-ai/commit/239dd24)) |
+| [@aazminu](https://github.com/aazminu) | **Fixed `n31_elderly_repeat`** ([#16](https://github.com/josephlash10-svg/friday-emotional-ai/pull/16)): Margaret asked *"Did I tell you about my cat?"* and Friday said *"No, you didn't tell me about Pepper"*, though she had. Reviewing their fix uncovered a worse bug: a memory question combined with a suicidal statement could skip the safety check | Friday confirms what the record shows ([#16](https://github.com/josephlash10-svg/friday-emotional-ai/pull/16)), and the safety check now always comes first ([`239dd24`](https://github.com/josephlash10-svg/friday-emotional-ai/commit/239dd24)) |
 
 **Want your name here?** Write a short conversation that makes Friday fail: see
 [Adding a persona](CONTRIBUTING.md#adding-a-persona), or open a

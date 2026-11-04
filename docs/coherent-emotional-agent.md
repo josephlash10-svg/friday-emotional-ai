@@ -1,5 +1,9 @@
 # Coherent emotional agent experiment
 
+> **Historical (v1–v27, 2026-10-06/07).** This describes the experience model as Codex built it. The "experiment directory" and
+> "release report" it mentions are kept locally and are not in this repository. Later versions changed several of the details here
+> (memory limits, recall, the writer's notes); for the current design see [`MATH.md`](MATH.md) and the version write-ups in [`README.md`](README.md).
+
 The system maintains its own modeled reactions to conversational events, uses them in appraisal and decisions, remembers sourced experiences, and learns from ordinary corrections. Its language model expresses those reactions. A working emotional controller is not evidence of subjective consciousness, biological maturity, or human-indistinguishable conversation.
 
 ## What changes through experience
