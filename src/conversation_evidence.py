@@ -158,9 +158,12 @@ def content_words(text):
 # you about?" got "I don't remember asking you that"; "what was I worried about yesterday morning?" got "No".
 TIME_QUESTION = re.compile(r"(?i)(?<!\w)(?:how long (?:has it been|since|ago|were you|was i)|when (?:did|was) (?:we|the last time)|when we last (?:talked|spoke|chatted)|(?:it'?s|has it) been a (?:while|minute))(?!\w)")
 FRIDAY_ASKED = re.compile(r"(?i)(?<!\w)(?:what (?:did|were) you (?:ask|asking|want|wanting) (?:me|to know)|what did you (?:say you )?want(?:ed)? me to (?:tell|bring|let)|what were you (?:curious|wondering) about)(?!\w)")
-OVERVIEW = re.compile(r"(?i)(?<!\w)(?:what do i do(?: for (?:work|a living))?|where do i work|what(?:'s| is) my job|what have you learned about me|"
+# v35.1.2 (Moss live chat): a bare "what do i do" ("29 and dropping, what do i do") and "this week's forecast" brought the whole
+# conversation overview (1,700 characters) into prompts that had no room for the problem itself. Only questions about them now.
+OVERVIEW = re.compile(r"(?i)(?<!\w)(?:what do i do for (?:work|a living)|where do i work|what(?:'s| is) my job|what have you learned about me|"
                       r"what(?:'s| is| has been) going on (?:in|with) my life|which day|what day (?:was|do you)|looking back|what do you know about me|"
-                      r"what do you remember (?:most|about)|over the (?:last|past) (?:week|few days|couple)|this (?:past )?week)(?!\w)")
+                      r"what do you remember (?:most|about)|over the (?:last|past) (?:week|few days|couple)|this past week|"
+                      r"(?:told|said to|talked about with|mentioned to) you[^.?!]{0,30}this week)(?!\w)")
 
 def _when(row, now):
     import time_sense

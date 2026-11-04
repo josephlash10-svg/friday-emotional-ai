@@ -43,6 +43,44 @@ def who_is_who(user_texts, name=None):
                     'What they described above is theirs, not yours')}
 
 
+OTHERS_LIMIT, OTHERS_CHARS = 4, 100
+NOT_NAMES = set('''I I'm I'll I've I'd Friday Monday Tuesday Wednesday Thursday Saturday Sunday January February March April May June July
+August September October November December AI OK Ok Okay TV US UK'''.split())
+
+
+# Capitalized words that start sentences without being names.
+STARTERS = set('''The This That These Those It He She They We You My Our Your His Her Their And But So Yes No Hi Hey Hello Thanks Thank
+What When Where Why How Who Which If Then Also Just Well Oh Wait Sorry Good Great Fine Sure Not One Two Three Today Tomorrow Yesterday
+Last Next Every All Some Maybe Please Let Can Could Would Should Do Does Did Is Are Was Were Have Has Had There Here In On At For With
+From To As Because After Before Anyway Honestly Ha Haha Lol Ugh Wow Right Nope Yeah Yep Still Even Only Now Never Always Again Plus'''.split())
+
+
+def names_in(user_texts, skip=()):
+    """Capitalized words that are probably names: "Priya saw the logs", "Dev's buying them", "but Ruth looked at it"."""
+    found = []
+    skipped = {s.lower() for s in skip}
+    for text in user_texts:
+        for match in re.finditer(r"(?<![\w'])([A-Z][a-z]{1,15})(?:'s)?\b", (text or '').replace('’', "'")):
+            name = match.group(1)
+            if name not in NOT_NAMES and name not in STARTERS and name.lower() not in skipped and name not in found:
+                found.append(name)
+    return found
+
+
+def other_people(user_texts, names):
+    """The latest thing said about each person they mention, so "Dev's buying them now" stays Dev's (v35.1.2: "You buy four
+    strips from Dev"; "you're trusting me more" for what Priya said). At most four people, newest mention each."""
+    latest = {}
+    for text in user_texts:
+        for sentence in re.split(r'(?<=[.!?])\s+', (text or '').replace('’', "'")):
+            for name in names:
+                if re.search(r'(?i)(?<!\w)' + re.escape(name) + r"(?:'s)?(?!\w)", sentence):
+                    latest.pop(name, None)
+                    latest[name] = sentence.strip()[:OTHERS_CHARS]
+    rows = list(latest.items())[-OTHERS_LIMIT:]
+    return [f'{name}: {said}' for name, said in rows] or None
+
+
 def earlier_in_this_conversation(trimmed, at_friday=None):
     """The few earlier exchanges that matter most once they are out of view, oldest first. trimmed: history rows
     ({'role', 'content'}) no longer shown. Fixed size, so it never grows with the conversation."""

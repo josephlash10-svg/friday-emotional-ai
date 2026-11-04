@@ -233,6 +233,10 @@ def violations(reply,turn,names):
         issues.append('Left them wondering if they are too much: say plainly and warmly that they are not (you like hearing about their days, the hard parts too). Don\'t call their sharing heavy or a lot to hold.')
     if cc.took_the_joke_number(text,reply,history):
         issues.append('Took the joke as the answer: they said the pushback was a joke, so your answer stands. Laugh it off lightly; do not adopt their number.')
+    if cc.sided_with_wrong_claim(text,reply):
+        wrong='; '.join(cc.false_claims(text))
+        issues.append('Agreed with a wrong claim: check their claim against your answer before agreeing'+(f' ({wrong})' if wrong else '')+
+                      '. If you were right, say so plainly and kindly and show why; never call someone right when their answer differs from yours.')
     if cc.advised_hiding(text,reply,history):
         issues.append('Advised hiding a mistake: they are deciding whether to tell the people responsible for them. Encourage honesty, kindly; never suggest hiding it or keeping records private.')
     if cc.gave_up_without_reason(text,reply,history) or cc.adopted_their_number(text,reply,history):
@@ -387,6 +391,10 @@ def fallback(turn,names,issues):
         return 'I can’t send you reminders, since I only talk when you open the chat. A phone reminder would do it.'
     if any('Left them wondering' in issue for issue in issues):
         return 'No, you’re not too much. I like hearing about your days, the hard parts too.'
+    if any('Agreed with a wrong claim' in issue for issue in issues):
+        import conversation_checks as checks
+        wrong=checks.false_claims(turn.text)
+        return ('I checked it again, and I think my answer holds'+(f': {wrong[0]}.' if wrong else '.')+' Which step looks wrong to you?')
     if any('Advised hiding a mistake' in issue for issue in issues):
         return ('I’d tell them. It’s scary, but hiding it would cost you more trust than the mistake will. '
                 'Say what happened, what you missed, and what you’ll watch for next time.')

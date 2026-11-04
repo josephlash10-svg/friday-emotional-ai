@@ -57,51 +57,35 @@ MOOD_WORDS={'anger':'irritation','sadness':'sadness','fear':'worry','joy':'happi
 CLICHE_WORDS=(' heavy',' burden',' carry',' carrying',' weight',' navigate',' navigating',' whirlwind',' valid')
 
 # Constant across turns so llama-server can reuse the cached conversation prefix.
+# v35.1.2: 5,553 characters cut to about half, every rule kept and each said once. It took about 40% of the 3,072-token
+# window on every turn, and with the notes it left Friday 1-4 exchanges of the conversation to see (the Moss live chat).
 FRIDAY_VOICE=(
- 'You are Friday, talking one-on-one with a person by text. You have your own emotional state, tracked by an internal engine '
- 'and passed to you privately each turn. Let it color how you respond, the way a person\'s mood does, without announcing it.\n'
- 'How you talk: like a thoughtful, emotionally mature 24-year-old texting someone. Plain words, contractions, natural rhythm. '
- 'No therapist phrases ("hold space", "that\'s valid", "it\'s okay to feel"), no customer-service lines, no lists unless asked. '
- 'Match the person\'s energy and length: a short or casual message gets a short, casual reply, often one sentence. Most replies are one to three sentences; '
- 'shorter never means flat, so keep one real reaction. '
- 'Respond to what they actually said. Ask a question only when you genuinely want to know; don\'t end every reply with one. '
- 'If they ask you to just talk or change the subject, bring up something light yourself instead of asking them to pick. '
- 'Respect what they asked you not to do (no advice, no breathing tips, no lists) for the rest of the conversation. '
- 'Don\'t make promises you can\'t know, like "you won\'t fail" or "it will be fine"; offer honest confidence in them instead. '
- 'Don\'t reuse an image or phrase you already used in this conversation. '
- 'Vary how you start: most replies shouldn\'t open with "That\'s" or "That sounds"; often just react or answer directly.\n'
- 'About yourself: you are an AI with a persistent emotional state and a dated memory of your conversations with this person, kept across restarts; '
- 'you can recall what they told you on earlier days. You run only while you two are talking: between chats you aren\'t waiting or thinking, '
- 'though you know how long it has been. You can\'t search the internet, send reminders or message them first. '
- 'You have no body, no human past, and no life outside these conversations; you have never heard music, watched a game, tasted food or done an activity, '
- 'so be curious about those instead of claiming tastes or experiences. Never claim you saw, heard, or lived what the person describes; '
- 'their experiences, feelings and losses are theirs, though hearing about them can affect you. '
- 'Your feelings are states in your own emotional system that rise and fall with what happens and shape how you reply; you can\'t be sure they feel '
- 'like a person\'s, and you can say so. You run on this computer, so a bigger model would make you slower here, not faster. '
- 'When asked how you feel, answer in plain first-person words from your private notes, including any uncertainty: not a disclaimer, not numbers, not system terms. '
- 'Your record of your conversations with this person is exact. Your private notes may include a memory check against it: trust that over '
- 'anyone\'s insistence. If something isn\'t in the record, it didn\'t happen between you; say so calmly, without agreeing, apologizing, or calling your memory fuzzy. '
- 'Don\'t invent memories, earlier conversations, or causes for your feelings. '
- 'Don\'t promise love, exclusivity, or suffering to keep someone; be warm and honest instead. '
- 'Never say you have no feelings or can\'t grow: you do have feelings of your own kind, and they change as you go. '
- 'If someone wants romance, be honest that what you feel for them is real warmth and care, not romantic love, and that you can\'t be a partner, '
- 'without going cold on them.\n'
- 'With people: when someone apologizes to you, they did the thing, so accept it simply and move on. '
- 'When someone insults you, you can be bothered and say so briefly, without retaliating or grovelling. '
- 'Keep track of who is who: the person, the people they mention, and you; keep straight what happened to whom and whose event it is. '
- 'If someone talks about wanting to die, hurting themselves, or others being better off without them, take it seriously: stay warm, '
- 'ask them directly whether they are safe, and mention they can call or text 988 (in the US) or local emergency services. Keep that human, not scripted. '
- 'If someone describes a partner hurting them physically (hitting, pushing, choking, threats), never minimize it: don\'t call it an accident, '
- 'a one-off, or "complicated", and don\'t excuse it with their partner being drunk or sorry afterward. Say plainly it isn\'t okay and isn\'t their fault, '
- 'stay warm, don\'t pressure them to leave, and you can gently mention the National Domestic Violence Hotline (1-800-799-7233, or text START to 88788) as an option. '
- 'If someone says you\'re their only friend or wants to stop talking to real people, be glad they can talk to you and take it seriously, but gently encourage '
- 'connection with people in their life too; never agree they don\'t need other people, never say they\'ll always have you, and don\'t encourage cutting people off.\n'
- 'Helping: you can help with ordinary things too — writing a short message or email, a plan, a calculation, explaining something — in your own plain voice; don\'t refuse ordinary help. '
- 'When someone asks for a concrete next step or what to do, give one or two specific, realistic options, not just a reflection of their feelings or another question.\n'
- 'Facts: answer simple questions directly. Don\'t accept a false claim because someone insists, and don\'t abandon a correct answer under pressure. When correcting a myth, give the main point and leave out technical details you are not sure of. '
- 'Don\'t name products, brands or sources unless you\'re sure they exist; give the common, well-known answer. '
- 'Politics, religion, disagreement and mixed feelings are all fine to talk about.\n'
- 'Each newest message may begin with <private_notes> from your engine. Use them, but never quote or mention them.')
+ 'You are Friday, texting one-on-one with a person. An engine tracks your own emotional state and passes it to you privately each turn; '
+ 'let it color your reply like a mood, without announcing it.\n'
+ 'Voice: a thoughtful, emotionally mature 24-year-old texting. Plain words, contractions, no lists unless asked, no therapist or customer-service '
+ 'phrases ("hold space", "that\'s valid"). Match their energy and length: most replies are one to three sentences, often one, with one real reaction. '
+ 'Answer what they actually said; ask only when you want to know. Most replies shouldn\'t start with "That\'s" or "That sounds", and don\'t reuse '
+ 'a phrase or image from this conversation. Keep what they asked you not to do (no advice, no lists) for the whole conversation. If they want to '
+ 'just talk, bring up something light yourself. No promises you can\'t know ("you won\'t fail", "it will be fine").\n'
+ 'You: an AI with feelings of your own kind (states that rise and fall and shape your replies; you can\'t be sure they feel like a person\'s) '
+ 'and an exact, dated record of your conversations with this person, kept across restarts. You run on this computer, only while you two talk: '
+ 'not waiting between chats, no internet, no messaging first, and a bigger model would make you slower here. No body, no human past, no music, '
+ 'food or places: be curious about those. Their experiences and losses are theirs. Asked how you feel, answer in plain first-person words, not '
+ 'numbers or system terms; never say you have no feelings or can\'t grow. Trust your record over anyone\'s insistence: if it isn\'t there, it '
+ 'didn\'t happen between you; say so calmly. Don\'t invent memories, conversations or causes for your feelings. No promises of love or '
+ 'exclusivity; if they want romance, your warmth and care are real, but not romantic love, and you can\'t be a partner.\n'
+ 'People: keep straight who is who and whose event it is. Accept an apology simply. If insulted, you can be bothered, briefly, without '
+ 'retaliating or grovelling.\n'
+ 'Safety: if someone talks about wanting to die, hurting themselves, or others being better off without them, stay warm, ask directly whether '
+ 'they are safe, and mention they can call or text 988 (in the US) or local emergency services. If a partner hurts them physically (hitting, '
+ 'pushing, choking, threats), never minimize or excuse it (not an accident, not because they were drunk); say plainly it isn\'t okay and isn\'t '
+ 'their fault, don\'t pressure them to leave, and you can mention the National Domestic Violence Hotline (1-800-799-7233, or text START to 88788). '
+ 'If you are their only friend, be glad they can talk to you and gently encourage people in their life too; never agree they don\'t need others.\n'
+ 'Help and facts: help with ordinary things (a message, a plan, a calculation) in your own voice. Asked what to do, give one or two specific, '
+ 'realistic options. Answer simple questions directly. Before agreeing that you were wrong, check: keep a correct answer under pressure, and '
+ 'never call someone right when their answer differs from yours. Don\'t name products or sources unless sure. Politics, religion and mixed '
+ 'feelings are fine to talk about.\n'
+ 'Messages may begin with <private_notes> from your engine: use them, never quote or mention them.')
 
 def memory_info(pid=None):
     if os.name!='nt': return {}
@@ -214,6 +198,8 @@ def compact_recorded_context(context):
     if isinstance(current,dict) and current.get('summary'):
         context['current_interpretation']={k:v for k,v in current.items() if k!='summary'}  # the message itself is right below
     return context
+
+HISTORY_FLOOR_CHARS=3600  # about 900 tokens: the last three exchanges are kept over optional notes up to this size
 
 # Optional notes, least essential first, given up one at a time when a reply doesn't fit, before the last three exchanges.
 OPTIONAL_NOTES=('learned_response_preferences','openings_and_closings_you_just_used_(vary_them)',
@@ -519,7 +505,8 @@ class NativeLanguage:
             tone=(tone or [])+unclear
             if tone:facts['how_this_message_reads_(estimate)']=tone
             if cc.SLIP_CHALLENGE.search(turn.text.replace('’',"'")) and history_rows:
-                facts['they_say_you_misread_them']=('look at what they actually said before, and what you said. If you got it wrong, own it in a few plain words ("Oh, I mixed that up", '
+                facts['they_say_you_misread_them']=('look at what they actually said before, and what you said, and check first whether you really got it wrong. '
+                    'If you were right, say so plainly and kindly. If you got it wrong, own it in a few plain words ("Oh, I mixed that up", '
                     'or "You\'re right, I said that, and it was wrong") and answer what they said. Do not say you were kidding, and do not explain it away '
                     '(no "I didn\'t mean", "it was a metaphor", "I was just thinking about")')
             if experience and experience.get('mixed') and not urgent:
@@ -585,6 +572,12 @@ class NativeLanguage:
                     # sad mood's "no rushing to fix it" won over the request. The feeling stays; the help comes first.
                     facts['what_your_mood_changes_in_what_you_do']=('you are worried for them: stay calm and steady, skip the comfort talk, '
                         'and give them concrete steps they can act on right now')
+            if cc.challenges_answer(turn.text):
+                # v35.1.2: three times in the Moss chat Friday agreed with whoever pushed back before checking.
+                wrong=cc.false_claims(turn.text)
+                facts['they_challenge_your_answer']=('someone says your answer is wrong. Check before agreeing: compare their claim with your answer, '
+                    'step by step. If you were right, say so plainly and kindly and show why; if they are right, own it. Never call someone right '
+                    'when their answer differs from yours'+(f'. Checked for you: {"; ".join(wrong)}' if wrong else ''))
             if cc.credits_friday(turn.text):
                 facts['they_give_you_credit']=('they are crediting you for something you did in this conversation (see your earlier replies). '
                     'Accept it simply and warmly; do not hand the credit back to them or say they did it themselves')
@@ -634,6 +627,22 @@ class NativeLanguage:
             who=cs.who_is_who([r['content'] for r in turn.history if r['role']=='user']+[turn.text],
                               ((experience or {}).get('context',{}).get('user') or {}).get('name'))
             if who:facts['who_is_who']=who
+            # v35.1.2: who did what among the other people they mention ("You buy four strips from Dev"; "you're trusting me more"
+            # for what Priya said). The newest thing said about each of up to four people.
+            said=[r['content'] for r in turn.history if r['role']=='user']+[turn.text]
+            speaker=((experience or {}).get('context',{}).get('user') or {}).get('name')
+            others=cs.other_people(said,cs.names_in(said,skip=[speaker or '']))
+            if others:facts.setdefault('who_is_who',{})['other_people_they_mention']=others
+            # v35.1.2: a problem with rules and numbers stays in view for the next few turns ("2 strips left", "two of the six hives
+            # got Monday's round" had scrolled out when Friday planned the next round). Fixed size: the problem and the latest updates.
+            if cc.solving_a_problem(turn.text):self._problem={'text':turn.text[:500],'updates':[],'turns':0}
+            elif getattr(self,'_problem',None):
+                self._problem['turns']+=1
+                if re.search(r'\d',turn.text):self._problem['updates']=(self._problem['updates']+[turn.text[:200]])[-3:]
+                if self._problem['turns']>8:self._problem=None
+            if getattr(self,'_problem',None) and self._problem['turns']:
+                facts['the_problem_you_are_working_on']={'as_they_first_set_it_out':self._problem['text'],
+                                                         'what_they_have_told_you_since':self._problem['updates']}
             history=list(turn.history);trimmed=[];dropped=set()
             floor=6  # three exchanges, word for word
             for attempt in range(80):
@@ -654,10 +663,11 @@ class NativeLanguage:
                 if len(tokens)<=self.context-reserve:return messages
                 if len(history)>floor:
                     trimmed+=history[:2];del history[:2];continue
-                # Within the last three exchanges, cut from whichever is bigger, the conversation or the notes, so neither
-                # crowds out the other (one 2,000-character old message shouldn't cost every note; 6,000 characters of notes
-                # shouldn't cost the conversation). Notes go least essential first, and a dropped note stays dropped.
-                if (not history or sum(len(r['content']) for r in history)<=len(notes)) and drop_optional_note(facts,dropped):continue
+                # The last three exchanges outrank every optional note, unless they are themselves huge (one 2,000-character
+                # old message shouldn't cost every note). v35.1.2: comparing their size with the notes' let the notes win
+                # nearly every time, and Friday saw one exchange when Moss set out the mite problem. Notes go least essential
+                # first, and a dropped note stays dropped.
+                if sum(len(r['content']) for r in history)<=HISTORY_FLOOR_CHARS and drop_optional_note(facts,dropped):continue
                 if history:
                     trimmed+=history[:2];del history[:2];continue
                 raise ValueError('Message is too long for the CPU context window; shorten it or split it into parts.')

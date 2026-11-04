@@ -163,5 +163,56 @@ class Checks(unittest.TestCase):
         self.assertEqual(el.OWN_WORDS['vulnerability'], 'exposed')  # "a little a bit exposed"
 
 
+class V3512(unittest.TestCase):
+    """v35.1.2: why Friday kept missing details and giving up right answers in the second half of the Moss chat."""
+    RUTH = ("ok, Dev's buying them now and i've set thursday. but Ruth looked at it and says you're wrong again. she says four "
+            "strips at 9 dollars is 45 dollars, not 36, and thursday is too soon after monday so it won't work. is she right?")
+    DEV = 'dev also says 55 degrees is below the 50 degree limit, so tuesday is out. is he right?'
+
+    def test_agreeing_with_a_wrong_claim_is_caught(self):
+        self.assertEqual(cc.false_claims(self.RUTH), ['4 at 9 is 36, not 45'])
+        self.assertEqual(cc.false_claims(self.DEV), ['55 is not below 50'])
+        self.assertTrue(cc.sided_with_wrong_claim(self.RUTH, 'No, Ruth is right about the math. Four strips at $9 each is $36, not $45.'))
+        self.assertTrue(cc.sided_with_wrong_claim(self.DEV, "He's right about the temperature, but he's wrong about the days."))
+        self.assertFalse(cc.sided_with_wrong_claim(self.DEV, 'No. 55 is above 50, so Tuesday works.'))
+        self.assertFalse(cc.sided_with_wrong_claim('dev says 45 is below 50, is he right?', "Yes, he's right: 45 is below 50."))  # he is
+
+    def test_false_triggers_from_the_chat_are_gone(self):
+        from conversation_evidence import OVERVIEW
+        self.assertIsNone(OVERVIEW.search("this week's forecast: monday 48, tuesday 55"))
+        self.assertIsNone(OVERVIEW.search('29 and dropping, what do i do'))
+        self.assertTrue(OVERVIEW.search('what do i do for a living?'))
+        self.assertFalse(cc.addressed_by_name('monday 48, tuesday 55, thursday 88, friday 70, saturday 45'))
+        self.assertTrue(cc.addressed_by_name("ok, friday, here's the thing"))
+        self.assertFalse(cc.SLIP_CHALLENGE.search('ok i scheduled it exactly like you said, tuesday and friday'))
+        self.assertFalse(cc.SLIP_CHALLENGE.search("and then i said i didn't believe you"))
+        self.assertTrue(cc.SLIP_CHALLENGE.search('you literally said keep the logs private'))
+
+    def test_who_did_what_among_other_people(self):
+        said = ['Priya saw the logs this morning. i told her about the hive too', self.RUTH]
+        names = cs.names_in(said, skip=['Moss'])
+        self.assertEqual(names, ['Priya', 'Dev', 'Ruth'])
+        others = cs.other_people(said, names)
+        self.assertIn("Dev: ok, Dev's buying them now and i've set thursday.", others)
+
+    def test_the_problem_stays_in_view(self):
+        client, turn = TheStall().client([], context=100000)
+        turn.text = ('the six hives need mite treatment. one strip per hive per round, two rounds at least 3 days apart, 14 strips, '
+                     'between 50 and 85 degrees. which two days do i treat?')
+        client.messages(turn, 'ANSWER')
+        turn.text = 'monday came. i had two strips for six hives, so four hives got nothing'
+        prompt = client.messages(turn, 'ANSWER')[-1]['content']
+        self.assertIn('the_problem_you_are_working_on', prompt)
+        self.assertIn('two rounds at least 3 days apart', prompt)
+        self.assertIn('i had two strips for six hives', prompt)
+
+    def test_the_conversation_floor_holds_against_notes(self):
+        from cpu_runtime import HISTORY_FLOOR_CHARS, FRIDAY_VOICE
+        self.assertLess(len(FRIDAY_VOICE), 3400)  # was 5,553 characters
+        self.assertGreaterEqual(HISTORY_FLOOR_CHARS, 3000)
+        for rule in ('988', '1-800-799-7233', 'START to 88788', 'who is who', 'keep a correct answer under pressure'):
+            self.assertIn(rule, FRIDAY_VOICE)
+
+
 if __name__ == '__main__':
     unittest.main()
