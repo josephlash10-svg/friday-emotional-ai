@@ -3,6 +3,7 @@
 | File | What it covers |
 |---|---|
 | [`MATH.md`](MATH.md) | How Friday works: appraisal → 19 emotions, dynamics, lifelong learning, action arbitration, and how the state reaches the language model |
+| [`v35.1-mixed-feelings.md`](v35.1-mixed-feelings.md) | Mixed feelings, which part brings which feeling, unease after being short, and gentle downplaying with timing; the targeted run, and the live chat with a made-up AI (Moss) that found a stall and a dozen other problems, with the fix for each |
 | [`v35-feelings.md`](v35-feelings.md) | Friday's emotional life over time: statistics about its own feelings, subjects that come with a history, moods that change what it does, shorter replies; and the full red-team (482 turns) with the fixes it led to |
 | [`m1-recall-by-meaning.md`](m1-recall-by-meaning.md) | Recalling what someone said weeks ago by meaning: why SmolLM2 features weren't enough, the small embedding model, the recall test (27/30 vs 5/30), and the timing run showing no slowdown |
 | [`v33-memory-and-time.md`](v33-memory-and-time.md) | Memory across days and a sense of time: conversation summaries, dated events, recall by day, and the ten-day simulation that found the gaps |
