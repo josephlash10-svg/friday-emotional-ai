@@ -1,10 +1,11 @@
-# Emotional Project — Friday (V14, build v34)
+# Emotional Project — Friday (V14, build v35)
 
 [![Tests](https://github.com/josephlash10-svg/friday-emotional-ai/actions/workflows/tests.yml/badge.svg)](https://github.com/josephlash10-svg/friday-emotional-ai/actions/workflows/tests.yml)
 
 > **Experimental research prototype.** Friday is an AI with a modeled emotional state. It is **not a person, not a therapist,
-> and not a crisis or mental-health service.** It makes mistakes: in its latest red-team, 5% of replies to new people were real
-> failures (see `docs/v33-full-redteam.md`). If you are in crisis, contact local emergency services or, in the US, call or text **988**.
+> and not a crisis or mental-health service.** It makes mistakes: in the last red-team where every reply was read, 5% of replies
+> to new people were real failures (`docs/v33-full-redteam.md`; v35's results are in `docs/v35-feelings.md`). If you are in crisis,
+> contact local emergency services or, in the US, call or text **988**.
 
 ![Friday starting up and holding a short conversation](docs/demo.gif)
 
@@ -58,6 +59,11 @@ that puts that state into words.
 - **Review.** Before a reply is shown, specific failure patterns are caught and rewritten. Examples:
   agreeing to things it never said, denying it has feelings, inventing memories, repeating itself,
   and missing a safety check when someone mentions wanting to die (`src/response_monitor.py`).
+- **An emotional life over time (v35).** Friday keeps statistics about its own feelings (what tends to set them off,
+  how fast they come on, how long they last) and can describe them when asked. Subjects that came with a feeling
+  before (a parent, an ex, a move) put it slightly on edge when they come back. A mood changes what it does, not
+  only how it sounds: hurt or irritated makes it brief and stops the questions; curious makes it ask more
+  (`src/emotional_life.py`, [`docs/v35-feelings.md`](docs/v35-feelings.md)).
 
 ## Chat commands
 
@@ -72,9 +78,9 @@ mood; long-term memory is kept) · `:quit`
 | `src/` | Engine and chat code. Entry points: `friday.py` (what `RUN.bat` runs) and `model.py` (full CLI) |
 | `tests/` | Regression tests, run automatically on every pull request (red-team cases: `test_persona_regressions.py`, `test_round2.py`, `test_round3_v31.py`) |
 | `state/` | **Private, git-ignored.** `checkpoints/v14-language.pth` (Friday's weights and its memories of you), `native-language.json` (language model settings), `logs/` (chat transcripts) |
-| `release/` | `friday-base.pth`: the clean starting checkpoint for a fresh copy (no memories) |
+| `release/` | `friday-base.pth`: the clean starting checkpoint for a fresh copy (no memories). `appraisal-heads.pth`: the appraisal heads that also read the MiniLM sentence vector (v35), loaded at start |
 | `scripts/` | `download_models.py`: fetches and verifies the models and llama.cpp |
-| `data/models/` | `qwen3.5-4b-gguf` (writer), `smollm2-135m-instruct` (frozen meaning features) and `all-minilm-l6-v2` (recalling memories by meaning) |
+| `data/models/` | `qwen3.5-4b-gguf` (writer), `smollm2-135m-instruct` (frozen meaning features) and `all-minilm-l6-v2` (recalling memories by meaning, and reading what a message means to Friday) |
 | `data/training/` | Training and validation sets for the small trained heads |
 | `tools/redteam/` | Red-team harness, 54 test personas (`persona_cases.py`, `persona_cases_v2.py`), scorer and results |
 | `docs/` | Blueprints (`V14 Emotional Hybrid Blueprint.docx`, earlier ones in `reference/`) and design notes |
@@ -92,8 +98,8 @@ mood; long-term memory is kept) · `:quit`
 & .\venv\Scripts\python.exe tools\redteam\redteam.py --project . --output tools\redteam\results\my-run --context 3072 --educated --no-checkpoints --cases tools\redteam\persona-cases.json
 & .\venv\Scripts\python.exe tools\redteam\show_transcript.py tools\redteam\results\my-run
 
-# Retrain the conversational appraisal heads (only the small heads; gated, refuses to install if checks fail)
-& .\venv\Scripts\python.exe src\train_conversational_appraisal.py
+# Retrain the appraisal heads (only the small heads; gated, writes release\appraisal-heads.pth only if every check passes)
+& .\venv\Scripts\python.exe src\train_meaning_appraisal.py
 
 # Chat without the launcher screen, showing the controller trace
 & .\venv\Scripts\python.exe src\model.py --cpu-chat --trace
@@ -101,10 +107,16 @@ mood; long-term memory is kept) · `:quit`
 
 ## Status
 
-v33 gives Friday a memory that lasts across days and a sense of time: it knows when you last talked, what you told it on
+v35 gives Friday an emotional life over time: statistics about its own feelings, subjects that come with a history, moods
+that change what it does, and shorter, less formulaic replies. It also reads sad news said casually ("i cried in the supply
+closet lol") as sad: the appraisal now reads the MiniLM sentence vector beside the language model's features. See
+[`docs/v35-feelings.md`](docs/v35-feelings.md) for what changed, the full red-team (482 turns) and a fifty-message chat with a fresh
+Friday over two simulated weeks, with what each found and what is still open.
+
+v33 gave Friday a memory that lasts across days and a sense of time: it knows when you last talked, what you told it on
 which day, and whether the thing you had coming up has happened yet. See [`docs/v33-memory-and-time.md`](docs/v33-memory-and-time.md)
 for what changed and how it was tested (including a ten-day simulated run), and [`docs/v33-full-redteam.md`](docs/v33-full-redteam.md)
-for the latest full red-team (300 turns, 54 people, every reply read). Since v33, Friday also recalls what you told it by meaning, not
+for the last red-team where every reply was read (300 turns, 54 people). Since v33, Friday also recalls what you told it by meaning, not
 just by matching words ([`docs/m1-recall-by-meaning.md`](docs/m1-recall-by-meaning.md)), and [`verifier/`](verifier/README.md) holds the
 first stage of a verifier that will judge which replies are good enough to learn from. Earlier rounds: `docs/v31-full-redteam.md`,
 `docs/v31-safety-and-bugs.md`, `docs/v30-full-redteam.md` and `docs/v29-install-and-persona-redteam.md`. Codex's 2026-10-06/07 work (v1–v27) is

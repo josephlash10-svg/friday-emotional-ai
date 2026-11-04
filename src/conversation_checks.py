@@ -38,8 +38,9 @@ NEWS_TONE = re.compile(r"(?i)!|:\)|\b(?:great|good|nice|awesome|amazing|excit\w*
 def bare_news_as_good(text, reply):
     """A short bit of news that doesn't say how it went, greeted as good news."""
     clean = _clean(text)
+    # The re-check got just "Nice! Did he tell you anything new about the gym?"
     return bool(BARE_NEWS.search(clean) and not NEWS_TONE.search(clean) and len(clean.split()) <= 12
-                and GOOD_NEWS.search(_clean(reply)))
+                and (GOOD_NEWS.search(_clean(reply)) or re.match(r"(?i)\W*(?:oh,? )?(?:nice|great|yay|awesome|amazing)\b", _clean(reply))))
 
 def guessed_unnamed(text, reply, history=()):
     """A reply that reacts to an unnamed thing as good or bad (or claims to know it), when nothing earlier names it.

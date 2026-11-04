@@ -338,6 +338,7 @@ class FullRedTeamFixes(unittest.TestCase):
         text = 'hey. eli called on my lunch break'
         self.assertTrue(cc.bare_news_as_good(text, "Oh, that's great news! Did he tell you anything exciting?"))
         self.assertTrue(any('Called it good news' in i for i in issues_for("Oh, that's great news!", text)))
+        self.assertTrue(cc.bare_news_as_good(text, 'Nice! Did he tell you anything new about the gym?'))
         self.assertFalse(cc.bare_news_as_good(text, 'Oh? How did that go?'))
         self.assertFalse(cc.bare_news_as_good('eli called!! he got the job', "That's great!"))  # they said how it went
         self.assertFalse(cc.bare_news_as_good('my sister called and we finally made up after two years', "That's great."))

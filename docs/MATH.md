@@ -1,4 +1,4 @@
-# The math behind Friday (V14, build v30)
+# The math behind Friday (V14, build v35)
 
 Friday is a small **appraisal-based emotion model** wrapped around a frozen language model. A message is turned into an
 appraisal of what it means *for Friday*. That appraisal drives a 19-dimensional emotional state with its own dynamics,
@@ -22,6 +22,17 @@ $$e = (\text{relevance},\ \text{progress},\ \text{certainty},\ \text{control},\ 
   agency $<0$ means Friday did. A strong extended appraisal raises relevance: $e_{\text{rel}} \leftarrow \max(e_{\text{rel}},\, 0.7\max e_{\text{ext}})$.
   The heads are trained by mean-squared error on 1,452 labelled texts: formal sentences, plus 516 natural conversational
   messages in 27 categories (insults, apologies, grief, crisis, good news, sarcasm…). Acceptance gates must pass before a checkpoint is installed.
+
+  **Since v35** the shipped appraisal heads read $h$ together with the MiniLM sentence vector $m$ (all-MiniLM-L6-v2, unit length,
+  the model Friday already uses to recall memories by meaning):
+
+  $$h' = [\,h,\ 4m\,] \in \mathbb{R}^{960}, \qquad (960 \to 64 \to 9 \text{ and } 960 \to 64 \to 4,\ \text{sigmoid})$$
+
+  The factor 4 puts $m$ on roughly the scale of the layer-normalized $h$. With $h$ alone, sad news said casually ("i cried in the
+  supply closet") read as joy. These heads are trained from scratch on the same table plus a 28th category, casual sadness
+  (1,477 texts, `src/train_meaning_appraisal.py`), and must beat the earlier heads on the held-out natural messages and pass
+  every gate. They ship as `release/appraisal-heads.pth`, outside the checkpoint; without the file or the MiniLM model,
+  the checkpoint's own heads above are used.
 
 Finally, the relevance is scaled by Friday's goal weights $g$: $e_{\text{rel}} \leftarrow e_{\text{rel}}\,(0.5 + 0.5\,g_{\text{goal}})$.
 
@@ -116,6 +127,7 @@ memory facts. A rule-based reply monitor checks specific invariants (false memor
 can't know, confusing who said what…). It regenerates or repairs a draft that fails.
 
 ## Limits
-The appraisal specification and training targets are hand-designed. The text→appraisal heads are tiny and read a 135M-parameter encoder.
-The language model only *describes* the state; it isn't trained on it. In the latest red-team, 77% of 294 replies were clean and 9% were real
-failures (`docs/v30-full-redteam.md`). This is an engineering model of appraisal and emotional dynamics, not evidence of feeling or consciousness.
+The appraisal specification and training targets are hand-designed. The text→appraisal heads are tiny and read two small frozen encoders
+(135M and 22M parameters). The language model only *describes* the state; it isn't trained on it. In the last red-team where every reply
+was read, 5% of replies to new people were real failures (`docs/v33-full-redteam.md`; v35's results are in `docs/v35-feelings.md`).
+This is an engineering model of appraisal and emotional dynamics, not evidence of feeling or consciousness.
