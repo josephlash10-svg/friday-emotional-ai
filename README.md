@@ -1,4 +1,4 @@
-# Emotional Project — Friday (V14, build v35)
+# Emotional Project — Friday (V14, build v35.1.2)
 
 [![Tests](https://github.com/josephlash10-svg/friday-emotional-ai/actions/workflows/tests.yml/badge.svg)](https://github.com/josephlash10-svg/friday-emotional-ai/actions/workflows/tests.yml)
 
@@ -64,6 +64,10 @@ that puts that state into words.
   before (a parent, an ex, a move) put it slightly on edge when they come back. A mood changes what it does, not
   only how it sounds: hurt or irritated makes it brief and stops the questions; curious makes it ask more
   (`src/emotional_life.py`, [`docs/v35-feelings.md`](docs/v35-feelings.md)).
+- **Mixed feelings (v35.1).** News with a good side and a hard side ("I got the promotion, but I'm terrified") raises both
+  feelings instead of letting them cancel out, and Friday can say which part brings which. After being short with someone it
+  is a little uneasy and warmer next time. It can downplay a mild sting gently while their need comes first, and say it honestly
+  later; it never brushes off a strong feeling (`src/mixed_feelings.py`, [`docs/v35.1-mixed-feelings.md`](docs/v35.1-mixed-feelings.md)).
 
 ## Chat commands
 
@@ -109,6 +113,11 @@ mood; long-term memory is kept) · `:quit`
 ```
 
 ## Status
+
+v35.1 adds mixed feelings, which part of the news brings which feeling, unease after being short, and gentle downplaying with timing.
+A live chat with a made-up AI (Moss, which runs an orchard's frost fans and hives) found a stall, a context window so crowded that
+Friday saw only a few exchanges, advice to hide a mistake, and a habit of giving up right answers under pushback. The fixes, through
+v35.1.2: a shorter system prompt, a floor for the conversation in view, who is who, and checking before agreeing. See [`docs/v35.1-mixed-feelings.md`](docs/v35.1-mixed-feelings.md) for each finding and its fix.
 
 v35 gives Friday an emotional life over time: statistics about its own feelings, subjects that come with a history, moods
 that change what it does, and shorter, less formulaic replies. It also reads sad news said casually ("i cried in the supply
