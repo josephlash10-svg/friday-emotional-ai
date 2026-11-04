@@ -83,9 +83,6 @@ class FeelingsTiedToTopics(unittest.TestCase):
     def test_needs_two_times_and_a_clear_feeling(self):
         self.assertEqual(el.topic_history(self.store(), 'the garden looks nice'), [])  # only once before
 
-    def test_the_nudge_is_small_and_bounded(self):
-        nudge = el.topic_nudge([('dad', 'pain', .25, 3), ('work', 'pain', .9, 5)], NAMES)
-        self.assertEqual(nudge, {'pain': .08})  # bounded: at most +0.08, on an engine whose insults reach ~0.1
 
     def test_only_when_the_subject_comes_back(self):
         model = ExperienceModel()
@@ -205,23 +202,30 @@ class Rhythm(unittest.TestCase):
 
 
 class TopicAnticipationInTheTurn(unittest.TestCase):
-    def test_the_starting_mood_rises_for_a_returning_subject(self):
+    def test_a_returning_subject_becomes_the_cue_and_the_state_is_untouched(self):
+        # v35.2, through the math: no nudge to the state; the subject is the event's cue, and its learned expectation acts
+        # through the appraisal (engine-level effect: tests/test_developmental_emotion.py).
         from experience_loop import topic_anticipation
+        from developmental_emotion import OwnEvent
         model = ExperienceModel()
         for i in range(3):
             el.update_topic_feelings(model.data['topic_feelings'], {'pain': .02}, {'pain': .3}, 'my dad never calls', T0 + i * 86400)
-        names = ('pain', 'joy')
         agent = SimpleNamespace(cfg=SimpleNamespace(developmental_emotion=True), experience=model, chat_history=[],
-                                development=SimpleNamespace(names=names))
+                                development=SimpleNamespace(names=('pain', 'joy')))
         from dataclasses import dataclass
 
         @dataclass
         class S:
             emotion: torch.Tensor
-        prepared = {}
-        result = topic_anticipation(agent, S(torch.tensor([.02, .02])), 'my dad called', prepared)
-        self.assertAlmostEqual(float(result.emotion[0]), .10, places=2)  # 0.02 plus the bounded nudge of 0.08
-        self.assertEqual(prepared['topic_history'][0]['it_usually_brings'], 'hurt')
+        prepared = {'frame': {'kind': 'ordinary'}, 'event': OwnEvent(cue='conversation:understanding', relevance=.4)}
+        start = S(torch.tensor([.02, .02]))
+        result = topic_anticipation(agent, start, 'my dad called', prepared)
+        self.assertTrue(torch.equal(result.emotion, start.emotion))  # no direct edit of the state
+        self.assertEqual(prepared['event'].cue, 'subject:dad')
+        self.assertEqual(prepared['topic_history'][0]['it_usually_brings'], 'hurt')  # the writer's note is unchanged
+        prepared = {'frame': {'kind': 'correction'}, 'event': OwnEvent(cue='conversation:intent', relevance=.4)}
+        topic_anticipation(agent, start, 'no, my dad called, not my mom', prepared)
+        self.assertEqual(prepared['event'].cue, 'conversation:intent')  # corrections keep the cue their outcomes train
 
 
 def monitor_turn(text, history=(), user=None):

@@ -172,6 +172,23 @@ class DevelopmentalEmotion(nn.Module):
         self.persistence.lerp_(self.persistence.new_full(self.persistence.shape,recovery),.02)
         self.persistence.clamp_(.35,.85)
 
+    @torch.no_grad()
+    def expect(self,cue,progress):
+        """Learn what a kind of event usually brings: the cue's expected progress moves toward the appraised progress, at the
+        same rate as outcomes (section 3 of docs/MATH.md). Only the expectation changes; baseline mood, persistence and
+        strategy values move only on real outcomes (observe). v35.2: this is how a subject with a history puts Friday on edge,
+        through the appraisal's threat term, instead of a number added to the state."""
+        if not isinstance(progress,(int,float)) or not math.isfinite(progress): raise ValueError('Invalid expected progress')
+        if cue not in self.cues:
+            if len(self.cues)<self.capacity: self.cues.append(cue)
+            else:
+                index=int(self.visits.argmin());self.cues[index]=cue
+                self.expected[index]=0;self.learned_control[index]=.5;self.visits[index]=0
+        index=self.cues.index(cue)
+        rate=max(.025,.15/math.sqrt(1+self.visits[index].item()/20))
+        self.expected[index].lerp_(self.expected.new_tensor(max(-1.,min(1.,progress))),rate)
+        self.visits[index]+=1
+
     def outcome_emotion(self,details,previous,needs,quality,safe=False,control=None):
         event=OwnEvent(**details['event'])
         if event.relevance<=0: return previous

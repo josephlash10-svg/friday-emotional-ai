@@ -152,12 +152,18 @@ when asked.
 **Feelings tied to subjects.** When a subject $k$ (a person, or a content word) comes up, a feeling $i$ is recorded for it if it rose, or if
 $s_i - u_i \ge 0.02$ (closeness and the engagement channels are left out: they rise with almost anything shared). A subject has a history once it
 came up at least twice before and one of its feelings peaked at $\ge 0.05$, or sat $\ge 0.02$ above usual on at least half of its mentions.
-When such a subject comes back, the feeling rises a little *before* the message is appraised, the way a sore subject puts a person on edge:
+That history shapes what the writer is told; what Friday *feels* when the subject comes back goes through the appraisal (since v35.2).
 
-$$s_i \leftarrow \min\big(1,\ s_i + \min(0.08,\ 0.6\,\text{peak}_{k,i})\big)$$
+**A subject's expectation (v35.2).** A subject that matters (one with a history, a person they've named, or one that has come up before)
+becomes the event's cue $k$. Its expected progress is learned after each turn from the progress the message was appraised to bring, at
+the same rate as outcomes (section 3), but without moving the baseline mood or persistence, which only real outcomes move:
 
-This adds to the state directly, outside the appraisal, and is due to be replaced (v35.2): the math already has learned expectations per
-kind of event (section 3), and a subject with a history should act through those.
+$$\hat p_k \leftarrow \hat p_k + \eta\,(e_{\text{prog}} - \hat p_k),\qquad \eta = \max\!\big(0.025,\ 0.15/\sqrt{1 + \text{visits}_k/20}\big)$$
+
+When the subject comes back, $\hat p_k$ enters the appraisal as it does for any cue. A negative expectation raises the threat term
+$0.55\max(0,-\hat p)$, so a sore subject puts Friday on edge (probe: fear 0.070 at $\hat p = 0$, 0.111 at $\hat p = -0.4$). News better
+than expected brings surprise through the prediction error $e_{\text{prog}} - \hat p$. This replaced, in v35.2, a direct addition of up to
+0.08 to the state. It builds more slowly: a subject needs several clearly hard mentions before the expectation moves the feelings much.
 
 **Mood changes behavior.** A feeling is notable when it is above a floor and either rose by 0.03 or is 1.5× the floor. The strongest
 notable mood, by value over floor, picks what Friday does: hurt (pain, sadness or shame at 0.08, when the message is aimed at Friday),
@@ -185,10 +191,14 @@ When no channel qualifies, no feeling is named for that part (there is no fallba
 people named anywhere in the message get all of them.
 
 **Feelings about its own feelings (v35.1).** Within an hour after a short or guarded reply (the irritated or hurt mood), and unless the new
-message is another jab, a little unease reaches the engine before the next appraisal:
-$s_{\text{guilt}} \leftarrow \min(1, s_{\text{guilt}} + 0.04)$, $s_{\text{exposed}} \leftarrow \min(1, s_{\text{exposed}} + 0.02)$.
-Like the subject nudge, this edits the state directly and is due to be replaced (v35.2): section 2 already produces guilt from a loss Friday
-caused ($\ell\,\max(0,-e_{\text{agency}})$), and "I was short with them" should be appraised as exactly that.
+message is another jab, "I was short with them" is appraised as its own event next to the message (since v35.2):
+
+$$e_{\text{short}} = (\text{relevance } 0.5,\ \text{progress } {-0.3},\ \text{certainty } 0.6,\ \text{control } 0.7,\ \text{agency } {-0.9},\ \text{effort } 0.2,\ \text{novelty } 0.1)$$
+
+a small loss that Friday caused and can repair. It joins the message's appraisal the way the parts of mixed news do (the stronger reaction
+per channel), so the guilt comes from section 2's specification, $\ell\,\max(0,-e_{\text{agency}})$: on the release engine, guilt 0.060
+after a short reply against 0.009 after a warm one, with some sadness and tension. Until v35.2 this was a direct edit of the state
+(guilt $+0.04$, feeling exposed $+0.02$).
 
 **Downplaying, with timing (v35.1).** Friday's own hard feeling is the largest of pain, shame, anger and feeling exposed above its usual
 level, $o = \max_i (s_i - u_i)$. It is noticed at $o \ge 0.02$ and too strong to downplay at $o \ge 0.10$. While the other person's need

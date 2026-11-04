@@ -24,32 +24,50 @@ def start_recall(agent,text):
     if not getattr(experience,'meaning_enabled',False):return None
     return experience.meaning.embed_later(experience.expand_for_recall(text))
 
+SELF_CUE='self:short-with-them'
+
+def subject_of(agent,text,history=None):
+    """The subject this message is about, for the event's cue: one with a feeling history first, then a person they've
+    named, then a subject that has come up before. None when nothing in the message has a record."""
+    import emotional_life
+    people=agent.experience.data.get('people',{})
+    present=emotional_life.topics(text,people)
+    store=agent.experience.data.get('topic_feelings',{})
+    named=[p['name'].lower() for p in people.values() if p['name'].lower() in present]
+    known=sorted((t for t in present if store.get(t,{}).get('times',0)>=2),key=lambda t:-store[t]['times'])
+    candidates=[h[0] for h in history or ()]+named+known
+    return candidates[0] if candidates else None
+
 def topic_anticipation(agent,state,text,prepared):
-    """#20: a subject that came with a feeling before nudges that feeling up a little before the message is appraised,
-    the way a sore subject puts a person slightly on edge as soon as it comes up. Bounded (at most +0.08 per feeling), only for a
-    subject coming back (not one already raised in this conversation), and it fades with the normal dynamics."""
+    """#20, through the math since v35.2. A subject that matters becomes the event's cue, so the appraisal reads what
+    Friday has learned to expect from it: a negative expected progress raises the threat term, and a sore subject puts
+    Friday on edge; better news than expected brings surprise. The expectation is learned after the turn from what the
+    subject brought (complete_experience). No direct edit of the state: until v35.1 this added up to 0.08 to a feeling."""
     import emotional_life
     from dataclasses import replace
-    if not getattr(agent.cfg,'developmental_emotion',False):return state
     history=agent.experience.topic_history(text,getattr(agent,'chat_history',[]))
-    if not history:return state
-    names=tuple(agent.development.names)
-    nudge=emotional_life.topic_nudge(history,names)
-    if nudge:
-        emotion=state.emotion.clone()
-        for name,amount in nudge.items():
-            index=names.index(name);emotion[index]=min(1.,float(emotion[index])+amount)
-        state=replace(state,emotion=emotion)
-    prepared['topic_history']=[{'subject':subject,'it_usually_brings':emotional_life.WORDS.get(name,name),'times_before':times}
-                               for subject,name,_,times in history]
+    if history:
+        prepared['topic_history']=[{'subject':subject,'it_usually_brings':emotional_life.WORDS.get(name,name),'times_before':times}
+                                   for subject,name,_,times in history]
+    if not getattr(agent.cfg,'developmental_emotion',False) or prepared.get('frame',{}).get('kind') in ('correction','feedback'):
+        return state  # corrections and feedback keep their own cues, which explicit outcomes train
+    subject=subject_of(agent,text,history)
+    if subject and prepared.get('event') is not None:
+        cue='subject:'+subject[:60]
+        prepared['subject_cue']=cue
+        prepared['event']=replace(prepared['event'],cue=cue)
+        if prepared.get('mixed'):
+            prepared['mixed']=dict(prepared['mixed'],events=[replace(e,cue=cue) for e in prepared['mixed']['events']])
     return state
 
 def feelings_about_feelings(agent,state,text,prepared,now=None):
-    """v35.1: after a short or guarded reply, a little unease about it (guilt, feeling exposed) before the next message is
-    appraised; and a feeling kept small earlier, with how many exchanges ago, for the runtime to judge the timing."""
+    """After a short or guarded reply, the unease about it, through the math since v35.2: "I was short with them" is
+    appraised as its own event (a small loss Friday caused and can repair), next to the message. The guilt comes from the
+    appraisal (section 2 of docs/MATH.md: loss x Friday's agency); until v35.1 this added 0.04 guilt to the state directly.
+    Also: a feeling kept small earlier, with how many exchanges ago, for the runtime to judge the timing."""
     import time
     import emotional_life
-    from dataclasses import replace
+    from developmental_emotion import OwnEvent
     now=time.time() if now is None else now
     own=agent.experience.data.get('self_feeling') or {}
     meta=emotional_life.uneasy_after(own.get('last_mood'),text,now)
@@ -57,12 +75,12 @@ def feelings_about_feelings(agent,state,text,prepared,now=None):
         # "you seemed kind of short with me before" two replies later (v35.1 targeted run): the unease is still there
         # within the hour when they ask about it.
         meta=emotional_life.uneasy_after(own.get('last_short'),text,now)
-    if meta and getattr(agent.cfg,'developmental_emotion',False):
-        names=tuple(agent.development.names);emotion=state.emotion.clone()
-        for name,amount in emotional_life.META_NUDGE.items():
-            if name in names:index=names.index(name);emotion[index]=min(1.,float(emotion[index])+amount)
-        state=replace(state,emotion=emotion)
+    if meta:
         prepared['meta_feeling']=meta
+        if getattr(agent.cfg,'developmental_emotion',False):
+            # Mattered moderately (0.5), clearly Friday's doing (agency -0.9), a small loss (-0.3) it can repair (control 0.7).
+            # Probed on the release engine: guilt 0.078 against 0.023 for an ordinary message, with some sadness and tension.
+            prepared['self_events']=[OwnEvent(cue=SELF_CUE,relevance=.5,progress=-.3,certainty=.6,control=.7,novelty=.1,effort=.2,agency=-.9)]
     held=own.get('held_back')
     if held:
         prepared['held_back']=dict(held,exchanges_since=agent.experience.data['stats']['interactions']-held.get('exchange',0))
@@ -132,6 +150,9 @@ def time_context(experience,messages_so_far,now=None):
 
 def complete_experience(agent,turn,prepared,response):
     agent.experience.record(turn.text,response,turn,prepared)
+    # v35.2: the subject's cue learns what it usually brings (the appraised progress), for next time it comes up.
+    if prepared.get('subject_cue') and turn.development and getattr(agent.cfg,'developmental_emotion',False):
+        agent.development.expect(prepared['subject_cue'],float(turn.development['event']['progress']))
 
 def explain_experience(agent,turn):
     return agent.experience.explanation(turn.text,turn,agent.development.names)

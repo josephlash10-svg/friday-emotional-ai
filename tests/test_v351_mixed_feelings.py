@@ -191,7 +191,8 @@ class FeelingsAboutFeelings(unittest.TestCase):
         self.assertTrue(el.ASKS_ABOUT_YOU.search('sorry for snapping earlier'))
         self.assertFalse(el.ASKS_ABOUT_YOU.search('are you free on saturday?'))
 
-    def test_the_unease_reaches_the_engine_before_appraisal(self):
+    def test_the_unease_is_an_appraised_event_not_a_state_edit(self):
+        # v35.2, through the math: "I was short with them" goes to the appraisal as its own event; the state is untouched.
         import torch
         import time_sense as ts
         import experience_loop
@@ -204,9 +205,14 @@ class FeelingsAboutFeelings(unittest.TestCase):
         class S:
             emotion: object
         prepared = {}
-        out = experience_loop.feelings_about_feelings(agent, S(torch.tensor([.02, .02, .05])), 'ok anyway', prepared, now=1_800_000_000.)
-        self.assertAlmostEqual(float(out.emotion[0]), .06, places=5)
+        start = S(torch.tensor([.02, .02, .05]))
+        out = experience_loop.feelings_about_feelings(agent, start, 'ok anyway', prepared, now=1_800_000_000.)
+        self.assertTrue(torch.equal(out.emotion, start.emotion))  # no direct edit of the state
         self.assertEqual(prepared['meta_feeling']['mood'], 'irritated')
+        (event,) = prepared['self_events']
+        self.assertEqual(event.cue, experience_loop.SELF_CUE)
+        self.assertLess(event.agency, 0)    # Friday caused it
+        self.assertLess(event.progress, 0)  # a small loss
 
 
 class Downplaying(unittest.TestCase):

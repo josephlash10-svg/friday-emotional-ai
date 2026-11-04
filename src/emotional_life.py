@@ -204,13 +204,8 @@ def topic_line(row):
             f'(say the name, recall something from before)')
 
 
-def topic_nudge(history, names, ceiling=.08, share=.6):
-    """How much each feeling rises in anticipation when a subject with a history comes back (small and bounded)."""
-    nudge = {}
-    for _, name, mean, _ in history:
-        if name in names:
-            nudge[name] = max(nudge.get(name, 0.), min(ceiling, share * mean))
-    return nudge
+# The anticipation a subject brings is no longer a nudge to the state: since v35.2 the subject is the event's cue, and its
+# learned expectation acts through the appraisal (experience_loop.topic_anticipation).
 
 
 # --- #18 Emotion changes behavior -----------------------------------------------------------------------------------
@@ -282,7 +277,7 @@ def causes(mixed, proposals, names):
 # After a short or guarded reply, Friday is a little uneasy about it, the way a person is after snapping. It shows in what
 # it does (warmer, no big apology), and it says so only when asked (the user's choice, 2026-11-04).
 SHORT_MOODS = {'irritated': 'being short with them', 'hurt': 'being guarded with them'}
-META_NUDGE = {'guilt': .04, 'vulnerability': .02}
+# The unease itself is appraised as an event since v35.2 (experience_loop.feelings_about_feelings), not added to the state.
 META_WINDOW = 3600
 ASKS_ABOUT_YOU = re.compile(r"(?i)\b(?:are you (?:ok|okay|alright|all right|good|mad|upset|hurt|annoyed|angry)|you (?:ok|okay|good|alright)\s*\?|"
                             r"did (?:that|i|it|what i said) (?:upset|hurt|bother|offend|annoy|sting) you|how are you(?: doing| feeling)?|"
