@@ -7,9 +7,9 @@
 > to new people were real failures (`docs/v33-full-redteam.md`; v35's results are in `docs/v35-feelings.md`). If you are in crisis,
 > contact local emergency services or, in the US, call or text **988**.
 
-![Friday starting up and holding a short conversation](docs/demo.gif)
+![Friday starting with a fresh memory and talking with someone whose best friend just moved away](docs/demo.gif)
 
-*A real session on a Snapdragon X laptop, fully offline. The text is unedited, only the timing is sped up. It was chosen as the best of several takes; Friday still makes mistakes. Here it invents "I've been saying you're capable". See the red-team results in `docs/v33-full-redteam.md`.*
+*A real first run with a fresh memory, on a Snapdragon X laptop, fully offline (v35). The text is unedited, only the timing is sped up. It was chosen as the best of three takes, and Friday still makes mistakes: here its last line ("Hope the taco place is still open tomorrow") misses the point. See [`docs/v35-feelings.md`](docs/v35-feelings.md) for the full results.*
 
 ## Setup (fresh copy from GitHub)
 Tested on Windows 11 (ARM64 Snapdragon X, 16 GB RAM), CPU only, Python 3.11.
