@@ -91,8 +91,9 @@ class DevelopmentalEmotion(nn.Module):
         proposal=propose(event,x)
         # v35.1 mixed feelings: news with a good side and a hard side. Each side is appraised too and the stronger reaction
         # for each feeling is kept, so joy and sadness can both rise instead of cancelling out in one reading.
-        for part in parts or ():
-            proposal=torch.maximum(proposal,propose(part,self.features(part,needs)))
+        part_proposals=[propose(part,self.features(part,needs)) for part in parts or ()]
+        for part_proposal in part_proposals:
+            proposal=torch.maximum(proposal,part_proposal)
         if depth is not None:
             if not 0<=depth<=1: raise ValueError('Emotional depth must be in [0,1]')
             coarse=proposal.clone()
@@ -137,7 +138,9 @@ class DevelopmentalEmotion(nn.Module):
         details['elapsed_seconds']=elapsed_seconds
         details['emotional_depth']=depth
         details['carryover_arousal_check']=carryover_check
-        if parts:details['mixed_parts']=[asdict(part) for part in parts]
+        if parts:
+            details['mixed_parts']=[asdict(part) for part in parts]
+            details['mixed_proposals']=[p.detach().tolist() for p in part_proposals]  # which part brings which feeling
         return regulated,emotion,selected_deliberation,details
 
     @torch.no_grad()

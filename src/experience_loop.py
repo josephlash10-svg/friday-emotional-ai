@@ -44,6 +44,26 @@ def topic_anticipation(agent,state,text,prepared):
                                for subject,name,_,times in history]
     return state
 
+def feelings_about_feelings(agent,state,text,prepared,now=None):
+    """v35.1: after a short or guarded reply, a little unease about it (guilt, feeling exposed) before the next message is
+    appraised; and a feeling kept small earlier, with how many exchanges ago, for the runtime to judge the timing."""
+    import time
+    import emotional_life
+    from dataclasses import replace
+    now=time.time() if now is None else now
+    own=agent.experience.data.get('self_feeling') or {}
+    meta=emotional_life.uneasy_after(own.get('last_mood'),text,now)
+    if meta and getattr(agent.cfg,'developmental_emotion',False):
+        names=tuple(agent.development.names);emotion=state.emotion.clone()
+        for name,amount in emotional_life.META_NUDGE.items():
+            if name in names:index=names.index(name);emotion[index]=min(1.,float(emotion[index])+amount)
+        state=replace(state,emotion=emotion)
+        prepared['meta_feeling']=meta
+    held=own.get('held_back')
+    if held:
+        prepared['held_back']=dict(held,exchanges_since=agent.experience.data['stats']['interactions']-held.get('exchange',0))
+    return state
+
 def prepare_experience(agent,state,text,frame,needs,measured=False,recall=None):
     query_vector=None
     if recall is not None:
@@ -53,6 +73,7 @@ def prepare_experience(agent,state,text,frame,needs,measured=False,recall=None):
         query_vector=None if vector is None else vector[0]
     prepared=agent.experience.prepare(text,frame,query_vector)
     state=topic_anticipation(agent,state,text,prepared)
+    state=feelings_about_feelings(agent,state,text,prepared)
     import emotional_life
     if emotional_life.ASKS_ABOUT_PATTERNS.search(text.replace('’',"'")):
         prepared['emotional_patterns']=agent.experience.emotional_patterns()  # #22: what Friday has learned about itself

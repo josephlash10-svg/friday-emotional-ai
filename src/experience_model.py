@@ -214,7 +214,20 @@ class ExperienceModel:
         return len(content_words(text))>=minimum
 
     # --- Emotional life over time (v35): statistics (#22) and feelings tied to topics (#20) ------------------------------
-    def _note_feelings(self,text,before,after,said):
+    def _note_self_feeling(self,prepared,response,now):
+        """v35.1: the mood of this reply (for feeling uneasy about it next turn), and a feeling kept small for later."""
+        own=self.data.setdefault('self_feeling',{})
+        own['last_mood']={'mood':prepared.get('mood_this_turn'),'utc':time_sense.stamp(now)}
+        held=own.get('held_back')
+        if held and prepared.get('honest_later_offered') and re.search(
+                r'(?i)\b(?:earlier|before|back there|when you said|honestly|to be honest)\b|'+re.escape(held['word'].split()[-1]),response or ''):
+            own['held_back']=None  # said honestly, once
+        elif held and now-time_sense.parse(held['utc'])>emotional_life.HOLD_EXPIRES:
+            own['held_back']=None
+        if prepared.get('held_back_now'):
+            own['held_back']=dict(prepared['held_back_now'],utc=time_sense.stamp(now),exchange=self.data['stats']['interactions'])
+
+    def _note_feelings(self,text,before,after,said,causes=None):
         people=self.data.get('people',{})
         stats=self.data.setdefault('emotion_stats',emotional_life.new_stats())
         usual=dict(stats.get('usual') or emotional_life.USUAL)  # the usual levels before this exchange moved them
@@ -226,7 +239,7 @@ class ExperienceModel:
         if named:self._last_person=(named[-1],said)
         elif last and said-last[1]<=3600 and re.search(r'(?i)\b(?:he|him|his|she|her|hers)\b',text):text=text+' '+last[0]
         emotional_life.update_stats(stats,before,after,text,said,people)
-        emotional_life.update_topic_feelings(self.data.setdefault('topic_feelings',{}),before,after,text,said,people,usual=usual)
+        emotional_life.update_topic_feelings(self.data.setdefault('topic_feelings',{}),before,after,text,said,people,usual=usual,causes=causes)
 
     def _backfill_emotional_life(self):
         """Memories saved before v35: rebuild the statistics and topic feelings from the stored exchanges."""
@@ -559,7 +572,9 @@ class ExperienceModel:
                  'before':before,'after':after,'development':turn.development,'feedback_used':False}
         self.data['episodes'].append(episode);self.data['episodes']=self.data['episodes'][-self.capacity:]
         self._note_conversation(episode,now);self._note_events(text,now);self._note_people(text,now)
-        self._note_feelings(text,before,after,now)
+        mixed=prepared.get('mixed');proposals=(turn.development or {}).get('mixed_proposals')
+        self._note_feelings(text,before,after,now,causes=emotional_life.causes(mixed,proposals,names) if mixed and proposals else None)
+        self._note_self_feeling(prepared,response,now)
         if self.meaning_enabled and self._worth_indexing(text):
             # After the reply is on screen: about 10 ms, while the checkpoint is being saved anyway.
             self._sync_vectors()

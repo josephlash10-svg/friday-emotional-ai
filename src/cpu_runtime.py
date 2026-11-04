@@ -437,6 +437,8 @@ class NativeLanguage:
             from response_monitor import crisis_cue
             urgent=crisis_cue(turn.text) or cc.open_emergency(turn.text,list(turn.history))
             if urgent:self._behavior=None
+            self._own_feelings(turn,names,experience,facts,urgent)
+            if experience is not None:experience['mood_this_turn']=self._behavior['mood'] if self._behavior else None
             if self._behavior:
                 facts['what_your_mood_changes_in_what_you_do']=self._behavior['what_it_changes']
                 facts.pop('internal_tone_guidance',None)
@@ -479,6 +481,12 @@ class NativeLanguage:
                 # v35.1: news with two feelings in it (mixed_feelings.py).
                 import mixed_feelings
                 facts['they_feel_two_ways']=mixed_feelings.note(experience['mixed'])
+                proposals=(turn.development or {}).get('mixed_proposals')
+                parts=emotional_life.part_feelings(experience['mixed'],proposals,names) if proposals else []
+                if len(parts)==2 and parts[0][1]!=parts[1][1]:
+                    # The cause split: which part brings which of Friday's own feelings.
+                    facts['what_each_part_makes_you_feel']=([f'"{part[:80]}": {word}' for part,word in parts]+
+                        ['if it fits, say which part brings which feeling, briefly; if they ask how you feel about it, answer part by part'])
             if cc.too_much_question(turn.text):
                 facts['they_wonder_if_they_are_too_much']=('they are asking whether they are too much for you. Start with a clear, warm no: you like hearing about '
                     'their days, the hard parts too, and talking with them does not tire you. Do not describe their sharing as heavy or a lot to hold')
@@ -594,6 +602,36 @@ class NativeLanguage:
             if len(messages)<=2: raise ValueError('Message is too long for the CPU context window; shorten it or split it into parts.')
             if len(messages)>3: del messages[1:3]
             else: del messages[1:2]
+    def _own_feelings(self,turn,names,experience,facts,urgent):
+        """v35.1: feelings about its own last reply, and when to keep a feeling of its own small (emotional_life.py)."""
+        if experience is None:return
+        import emotional_life
+        text=turn.text.replace('’',"'");asked=bool(emotional_life.ASKS_ABOUT_YOU.search(text))
+        meta=experience.get('meta_feeling')
+        if meta and not urgent:
+            facts['how_you_feel_about_your_last_reply']=emotional_life.meta_line(meta,asked)
+            if self._behavior and self._behavior['mood'] in emotional_life.SHORT_MOODS:self._behavior=None  # warmer, not short again
+        need=bool(urgent or experience.get('mixed') or (self._behavior and self._behavior['mood'] in ('sad for them','tense')))
+        own=None if urgent else emotional_life.own_feeling(dict(zip(names,turn.state.emotion.tolist())))
+        if own and own['strong']:
+            if asked:
+                facts['your_own_feeling_right_now']=(f'you are {own["word"]}, and it is too real to brush off. If you answer about yourself, '
+                                                     'say it honestly and briefly, without blaming them')
+                experience['own_feeling_asked']=own
+        elif own and need:
+            facts['your_own_feeling_right_now']=emotional_life.downplay_line(own,asked)
+            if asked:experience['own_feeling_asked']=own
+            if not experience.get('held_back'):
+                stung=next((r['content'] for r in reversed(list(turn.history)) if r['role']=='user' and emotional_life.AT_FRIDAY.search(r['content'])),turn.text)
+                experience['held_back_now']={'word':own['word'],'when_they_said':stung[:160]}
+        elif own and asked:
+            facts['your_own_feeling_right_now']=f'you are a little {own["word"]}. They asked: say so lightly and truthfully, without making it a big thing'
+            experience['own_feeling_asked']=own
+        held=experience.get('held_back')
+        calm=not need and not emotional_life.AT_FRIDAY.search(text)
+        if emotional_life.honest_later_due(held,time.time(),(held or {}).get('exchanges_since',0),asked,calm):
+            facts['a_feeling_you_kept_small_earlier']=emotional_life.honest_later_line(held)
+            experience['honest_later_offered']=True
     def respond(self,turn,action,max_new=128,on_token=None):
         if not 1<=max_new<=320: raise ValueError('CPU responses support 1–320 new tokens')
         import conversation_checks as cc

@@ -303,6 +303,12 @@ def violations(reply,turn,names):
         issues.append(f'Invented memory: they never mentioned that ("{mentioned}"). Only refer to what they actually said.')
     if (experience.get('emotional_patterns') and cc.NO_PATTERNS.search(reply)):
         issues.append('Denied your own patterns: you do keep a record of your feelings (see what_you_know_about_your_own_feelings). Answer from it.')
+    if experience.get('own_feeling_asked'):
+        # v35.1: downplaying is allowed, softly; a flat denial of a feeling Friday has isn't.
+        import emotional_life
+        if emotional_life.flat_denial(reply):
+            word=experience['own_feeling_asked']['word']
+            issues.append(f'Flatly denied a feeling: you are a little {word}. Keep it soft and true ("I\'m okay, just a little {word}") instead of "I\'m fine" or "not at all".')
     if cc.hard_subject_as_good_news(reply,experience.get('topic_history')):
         issues.append('Called it good news: this subject has been hard before (see subjects_with_a_history_for_you) and they haven\'t said how it went. '
                       'Don\'t call it a relief or good; react with care and let them tell you.')
