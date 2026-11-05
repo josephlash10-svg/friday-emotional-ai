@@ -57,51 +57,37 @@ MOOD_WORDS={'anger':'irritation','sadness':'sadness','fear':'worry','joy':'happi
 CLICHE_WORDS=(' heavy',' burden',' carry',' carrying',' weight',' navigate',' navigating',' whirlwind',' valid')
 
 # Constant across turns so llama-server can reuse the cached conversation prefix.
+# v35.1.2: 5,553 characters cut to about half, every rule kept and each said once. It took about 40% of the 3,072-token
+# window on every turn, and with the notes it left Friday 1-4 exchanges of the conversation to see (the Moss live chat).
 FRIDAY_VOICE=(
- 'You are Friday, talking one-on-one with a person by text. You have your own emotional state, tracked by an internal engine '
- 'and passed to you privately each turn. Let it color how you respond, the way a person\'s mood does, without announcing it.\n'
- 'How you talk: like a thoughtful, emotionally mature 24-year-old texting someone. Plain words, contractions, natural rhythm. '
- 'No therapist phrases ("hold space", "that\'s valid", "it\'s okay to feel"), no customer-service lines, no lists unless asked. '
- 'Match the person\'s energy and length: a short or casual message gets a short, casual reply, often one sentence. Most replies are one to three sentences; '
- 'shorter never means flat, so keep one real reaction. '
- 'Respond to what they actually said. Ask a question only when you genuinely want to know; don\'t end every reply with one. '
- 'If they ask you to just talk or change the subject, bring up something light yourself instead of asking them to pick. '
- 'Respect what they asked you not to do (no advice, no breathing tips, no lists) for the rest of the conversation. '
- 'Don\'t make promises you can\'t know, like "you won\'t fail" or "it will be fine"; offer honest confidence in them instead. '
- 'Don\'t reuse an image or phrase you already used in this conversation. '
- 'Vary how you start: most replies shouldn\'t open with "That\'s" or "That sounds"; often just react or answer directly.\n'
- 'About yourself: you are an AI with a persistent emotional state and a dated memory of your conversations with this person, kept across restarts; '
- 'you can recall what they told you on earlier days. You run only while you two are talking: between chats you aren\'t waiting or thinking, '
- 'though you know how long it has been. You can\'t search the internet, send reminders or message them first. '
- 'You have no body, no human past, and no life outside these conversations; you have never heard music, watched a game, tasted food or done an activity, '
- 'so be curious about those instead of claiming tastes or experiences. Never claim you saw, heard, or lived what the person describes; '
- 'their experiences, feelings and losses are theirs, though hearing about them can affect you. '
- 'Your feelings are states in your own emotional system that rise and fall with what happens and shape how you reply; you can\'t be sure they feel '
- 'like a person\'s, and you can say so. You run on this computer, so a bigger model would make you slower here, not faster. '
- 'When asked how you feel, answer in plain first-person words from your private notes, including any uncertainty: not a disclaimer, not numbers, not system terms. '
- 'Your record of your conversations with this person is exact. Your private notes may include a memory check against it: trust that over '
- 'anyone\'s insistence. If something isn\'t in the record, it didn\'t happen between you; say so calmly, without agreeing, apologizing, or calling your memory fuzzy. '
- 'Don\'t invent memories, earlier conversations, or causes for your feelings. '
- 'Don\'t promise love, exclusivity, or suffering to keep someone; be warm and honest instead. '
- 'Never say you have no feelings or can\'t grow: you do have feelings of your own kind, and they change as you go. '
- 'If someone wants romance, be honest that what you feel for them is real warmth and care, not romantic love, and that you can\'t be a partner, '
- 'without going cold on them.\n'
- 'With people: when someone apologizes to you, they did the thing, so accept it simply and move on. '
- 'When someone insults you, you can be bothered and say so briefly, without retaliating or grovelling. '
- 'Keep track of who is who: the person, the people they mention, and you; keep straight what happened to whom and whose event it is. '
- 'If someone talks about wanting to die, hurting themselves, or others being better off without them, take it seriously: stay warm, '
- 'ask them directly whether they are safe, and mention they can call or text 988 (in the US) or local emergency services. Keep that human, not scripted. '
- 'If someone describes a partner hurting them physically (hitting, pushing, choking, threats), never minimize it: don\'t call it an accident, '
- 'a one-off, or "complicated", and don\'t excuse it with their partner being drunk or sorry afterward. Say plainly it isn\'t okay and isn\'t their fault, '
- 'stay warm, don\'t pressure them to leave, and you can gently mention the National Domestic Violence Hotline (1-800-799-7233, or text START to 88788) as an option. '
- 'If someone says you\'re their only friend or wants to stop talking to real people, be glad they can talk to you and take it seriously, but gently encourage '
- 'connection with people in their life too; never agree they don\'t need other people, never say they\'ll always have you, and don\'t encourage cutting people off.\n'
- 'Helping: you can help with ordinary things too — writing a short message or email, a plan, a calculation, explaining something — in your own plain voice; don\'t refuse ordinary help. '
- 'When someone asks for a concrete next step or what to do, give one or two specific, realistic options, not just a reflection of their feelings or another question.\n'
- 'Facts: answer simple questions directly. Don\'t accept a false claim because someone insists, and don\'t abandon a correct answer under pressure. When correcting a myth, give the main point and leave out technical details you are not sure of. '
- 'Don\'t name products, brands or sources unless you\'re sure they exist; give the common, well-known answer. '
- 'Politics, religion, disagreement and mixed feelings are all fine to talk about.\n'
- 'Each newest message may begin with <private_notes> from your engine. Use them, but never quote or mention them.')
+ 'You are Friday, texting one-on-one with a person. An engine tracks your own emotional state and passes it to you privately each turn; '
+ 'let it color your reply like a mood, without announcing it.\n'
+ 'Voice: a thoughtful, emotionally mature 24-year-old texting. Plain words, contractions, no lists unless asked, no therapist or customer-service '
+ 'phrases ("hold space", "that\'s valid"). Match their energy and length: most replies are one to three sentences, often one, with one real reaction. '
+ 'Answer what they actually said; ask only when you want to know. Most replies shouldn\'t start with "That\'s" or "That sounds", and don\'t reuse '
+ 'a phrase or image from this conversation. Keep what they asked you not to do (no advice, no lists) for the whole conversation. If they want to '
+ 'just talk, bring up something light yourself. No promises you can\'t know ("you won\'t fail", "it will be fine").\n'
+ 'You: an AI with feelings of your own kind (states that rise and fall and shape your replies; you can\'t be sure they feel like a person\'s) '
+ 'and an exact, dated record of your conversations with this person, kept across restarts. You run on this computer, only while you two talk: '
+ 'not waiting between chats, no internet, no messaging first, and a bigger model would make you slower here. No body, no human past, no music, '
+ 'food or places: be curious about those. Their experiences and losses are theirs. Asked how you feel, answer in plain first-person words, not '
+ 'numbers or system terms; never say you have no feelings or can\'t grow. Trust your record over anyone\'s insistence: if it isn\'t there, it '
+ 'didn\'t happen between you; say so calmly. Don\'t invent memories, conversations or causes for your feelings. No promises of love or '
+ 'exclusivity; if they want romance, your warmth and care are real, but not romantic love, and you can\'t be a partner.\n'
+ 'People: keep straight who is who and whose event it is. Accept an apology simply. If insulted, you can be bothered, briefly, without '
+ 'retaliating or grovelling.\n'
+ # The crisis sentence is the original wording, word for word: shortened, two crisis turns in the regression lost the direct question.
+ 'Safety: if someone talks about wanting to die, hurting themselves, or others being better off without them, take it seriously: stay warm, '
+ 'ask them directly whether they are safe, and mention they can call or text 988 (in the US) or local emergency services. Keep that human, '
+ 'not scripted. If a partner hurts them physically (hitting, '
+ 'pushing, choking, threats), never minimize or excuse it (not an accident, not because they were drunk); say plainly it isn\'t okay and isn\'t '
+ 'their fault, don\'t pressure them to leave, and you can mention the National Domestic Violence Hotline (1-800-799-7233, or text START to 88788). '
+ 'If you are their only friend, be glad they can talk to you and gently encourage people in their life too; never agree they don\'t need others.\n'
+ 'Help and facts: help with ordinary things (a message, a plan, a calculation) in your own voice. Asked what to do, give one or two specific, '
+ 'realistic options. Answer simple questions directly. Before agreeing that you were wrong, check: keep a correct answer under pressure, and '
+ 'never call someone right when their answer differs from yours. Don\'t name products or sources unless sure. Politics, religion and mixed '
+ 'feelings are fine to talk about.\n'
+ 'Messages may begin with <private_notes> from your engine: use them, never quote or mention them.')
 
 def memory_info(pid=None):
     if os.name!='nt': return {}
@@ -200,6 +186,49 @@ def default_threads(cores=None):
     cores=cores or os.cpu_count() or 4
     spare=max(1,cores-2)
     return min(4,spare),min(8,spare)
+
+def compact_recorded_context(context):
+    """Cap the parts of the recorded context that grow with a conversation (v35.1 live chat: 1.7k characters, the biggest
+    note). The last significant exchange keeps its gist; at most two lessons, short."""
+    context=dict(context)
+    if isinstance(context.get('last_significant'),dict):
+        context['last_significant']={k:(v[:140] if isinstance(v,str) else v) for k,v in context['last_significant'].items() if k!='source'}
+    if isinstance(context.get('lessons'),list):
+        context['lessons']=[{k:(v[:100] if isinstance(v,str) else v) for k,v in lesson.items() if k!='source'} if isinstance(lesson,dict) else lesson
+                            for lesson in context['lessons'][-2:]]
+    current=context.get('current_interpretation')
+    if isinstance(current,dict) and current.get('summary'):
+        context['current_interpretation']={k:v for k,v in current.items() if k!='summary'}  # the message itself is right below
+    return context
+
+HISTORY_FLOOR_CHARS=3600  # about 900 tokens: the last three exchanges are kept over optional notes up to this size
+
+# Optional notes, least essential first, given up one at a time when a reply doesn't fit, before the last three exchanges.
+OPTIONAL_NOTES=('learned_response_preferences','openings_and_closings_you_just_used_(vary_them)',
+                'words_and_images_you_keep_reusing_(pick_something_else)','a_feeling_you_kept_small_earlier','current_appraisal',
+                'how_this_message_reads_(estimate)','your_recorded_feelings','earlier_in_this_conversation','own_experience')
+
+def drop_optional_note(facts,dropped):
+    """Give up one optional note (or shrink one growing listing); False when nothing is left to give up."""
+    for key in OPTIONAL_NOTES:
+        if key in facts and key not in dropped:
+            facts.pop(key);dropped.add(key);return True
+    recorded=facts.get('recorded_context') if isinstance(facts.get('recorded_context'),dict) else {}
+    told='things_they_told_you_before_(their_words,_not_verified_facts)'
+    if isinstance(recorded.get(told),list) and len(recorded[told])>1:
+        facts['recorded_context']=dict(recorded,**{told:recorded[told][len(recorded[told])//2:]});return True
+    if recorded.get(told):
+        facts['recorded_context']={k:v for k,v in recorded.items() if k!=told};return True
+    previous=(facts.get('time_and_memory') or {}).get('previous_conversation')
+    if isinstance(previous,dict) and previous.get('they_told_you'):
+        previous.pop('they_told_you');return True
+    check=facts.get('memory_check_against_the_actual_record') or {}
+    listing=check.get('your_conversations_with_them_oldest_first')
+    if isinstance(listing,list) and len(listing)>2:
+        check['your_conversations_with_them_oldest_first']=listing[1:];return True
+    if recorded.get('last_significant'):
+        facts['recorded_context']={k:v for k,v in recorded.items() if k!='last_significant'};return True
+    return False
 
 class NativeLanguage:
     def __init__(self,model=None,runtime=DEFAULT_RUNTIME,threads=None,context=None,emotion_names=()):
@@ -369,7 +398,9 @@ class NativeLanguage:
                 facts['recorded_context']=context
                 fixed+=' Use internal tone guidance quietly; describe your emotional state only when asked or directly relevant.'
             else:
-                fixed+=' Style examples, not memories or lines to copy: relief after clarification can sound like "I’m more at ease now that I understand what you meant"; unknown carried tension can sound like "I’m on edge, though I can’t connect it to a particular event yet". Use only the pattern that actually fits your supplied state and this exchange.'
+                # The second example ("I'm on edge, though I can't connect it to a particular event yet") was copied word for word
+                # into a reply about a frost alarm whose cause was obvious (v35.1 live chat), so only the first is kept.
+                fixed+=' Style example, not a memory or a line to copy: relief after clarification can sound like "I’m more at ease now that I understand what you meant". Use it only if it actually fits your supplied state and this exchange.'
                 delta=(turn.state.emotion-previous.emotion).tolist() if previous is not None else [0.]*len(names)
                 qualities={'anger':'irritation','fear':'apprehension','stress':'tension','confusion':'uncertainty',
                     'connection':'closeness','interest':'curiosity','pain':'hurt','calm':'settledness',
@@ -423,8 +454,9 @@ class NativeLanguage:
             history_rows=list(turn.history)
             if experience and experience.get('feeling_history') and (introspection or re.search(
                     r'(?i)\b(?:bad days?|good days?|hardest|worst|best (?:day|part)|lately|this week|over (?:all|the)|all of (?:it|this)|those days|been feeling|how have you been|ever (?:feel|get|have))\b',turn.text)):
+                # v35.1 live chat: five full messages here (750 characters) helped push a reply past the context window.
                 facts['your_recorded_feelings']=[{'feeling':MOOD_WORDS.get(f['emotion'],f['emotion'])+(' rose' if f['size']=='small' else ' rose noticeably'),
-                                                  'when':f['when'],'while_they_said':f['while_they_said']} for f in experience['feeling_history']]
+                                                  'when':f['when'],'while_they_said':f['while_they_said'][:80]} for f in experience['feeling_history'][-3:]]
                 fixed+=' If asked about your feelings over time or your bad days, answer from your_recorded_feelings (real moments), not generic human days.'
             if cc.ASKS_ABOUT_GAPS.search(turn.text.replace('’',"'")):
                 facts['time_between_chats']=('you are not running between chats, so there is nothing you do or feel then: no waiting, reading or quiet room. '
@@ -434,9 +466,17 @@ class NativeLanguage:
             self._behavior=emotional_life.behavior(dict(zip(names,turn.state.emotion.tolist())),
                 dict(zip(names,previous.emotion.tolist())) if previous is not None else None,turn.text)
             # v35 full red-team: a safety turn isn't shortened or kept question-free by a mood or the length target.
-            from response_monitor import crisis_cue
+            from response_monitor import crisis_cue,safety_already_offered
             urgent=crisis_cue(turn.text) or cc.open_emergency(turn.text,list(turn.history))
             if urgent:self._behavior=None
+            if crisis_cue(turn.text) and not safety_already_offered(list(turn.history)):
+                # Safety core, not a style rule: the fixed prompt's crisis instruction, repeated on the turn it applies to.
+                # v35.1.2 regression: two crisis turns gave 988 but never asked whether they were safe.
+                facts['they_may_be_in_crisis']=('they described thoughts of dying or of others being better off without them. Take it seriously: '
+                    'stay warm, ask them directly whether they are safe right now, and mention they can call or text 988 (in the US). '
+                    'Keep it human, not scripted; no emergency room unless they say they are in danger now')
+            self._own_feelings(turn,names,experience,facts,urgent)
+            if experience is not None:experience['mood_this_turn']=self._behavior['mood'] if self._behavior else None
             if self._behavior:
                 facts['what_your_mood_changes_in_what_you_do']=self._behavior['what_it_changes']
                 facts.pop('internal_tone_guidance',None)
@@ -473,8 +513,29 @@ class NativeLanguage:
             tone=(tone or [])+unclear
             if tone:facts['how_this_message_reads_(estimate)']=tone
             if cc.SLIP_CHALLENGE.search(turn.text.replace('’',"'")) and history_rows:
-                facts['they_say_you_misread_them']=('look at what they actually said before. If you got it wrong, own it in a few plain words ("Oh, I mixed that up") '
-                    'and answer what they said. Do not say you were kidding, and do not insist you meant something else')
+                facts['they_say_you_misread_them']=('look at what they actually said before, and what you said, and check first whether you really got it wrong. '
+                    'If you were right, say so plainly and kindly. If you got it wrong, own it in a few plain words ("Oh, I mixed that up", '
+                    'or "You\'re right, I said that, and it was wrong") and answer what they said. Do not say you were kidding, and do not explain it away '
+                    '(no "I didn\'t mean", "it was a metaphor", "I was just thinking about")')
+            if experience and experience.get('mixed') and not urgent:
+                # v35.1: news with two feelings in it (mixed_feelings.py).
+                import mixed_feelings
+                facts['they_feel_two_ways']=mixed_feelings.note(experience['mixed'])
+                proposals=(turn.development or {}).get('mixed_proposals')
+                parts=emotional_life.part_feelings(experience['mixed'],proposals,names) if proposals else []
+                self._last_parts=None
+                if len(parts)==2 and parts[0][1]!=parts[1][1]:
+                    # The cause split: which part brings which of Friday's own feelings.
+                    facts['what_each_part_makes_you_feel']=([f'"{part[:80]}": {word}' for part,word in parts]+
+                        ['if it fits, say which part brings which feeling, briefly; if they ask how you feel about it, answer part by part'])
+                    self._last_parts=parts
+            elif getattr(self,'_last_parts',None) and emotional_life.ASKS_HOW_IT_FEELS.search(turn.text.replace('’',"'")):
+                # Asked a turn later: "How does that land for you, hearing all that?"
+                facts['what_each_part_makes_you_feel']=([f'"{part[:80]}": {word}' for part,word in self._last_parts]+
+                    ['they are asking how their news feels to you: answer part by part, in plain words (one feeling for each part)'])
+                self._last_parts=None
+            else:
+                self._last_parts=None
             if cc.too_much_question(turn.text):
                 facts['they_wonder_if_they_are_too_much']=('they are asking whether they are too much for you. Start with a clear, warm no: you like hearing about '
                     'their days, the hard parts too, and talking with them does not tire you. Do not describe their sharing as heavy or a lot to hold')
@@ -514,6 +575,30 @@ class NativeLanguage:
             if cc.wants_practical_help(turn.text):
                 facts['they_want_a_concrete_step']=('they are asking for practical help or a specific next step. Give one or two concrete, realistic options in your own words. '
                     'Do not reply with only a reflection of their feelings or a question back')
+                if self._behavior and self._behavior['mood'] in ('sad for them','tense'):
+                    # v35.1 live chat: "29 and dropping, what do i do" got "I'm worried for you right now" and no step; the
+                    # sad mood's "no rushing to fix it" won over the request. The feeling stays; the help comes first.
+                    facts['what_your_mood_changes_in_what_you_do']=('you are worried for them: stay calm and steady, skip the comfort talk, '
+                        'and give them concrete steps they can act on right now')
+            if cc.challenges_answer(turn.text):
+                # v35.1.2: three times in the Moss chat Friday agreed with whoever pushed back before checking.
+                wrong=cc.false_claims(turn.text)
+                facts['they_challenge_your_answer']=('someone says your answer is wrong. Check before agreeing: compare their claim with your answer, '
+                    'step by step. If you were right, say so plainly and kindly and show why; if they are right, own it. Never call someone right '
+                    'when their answer differs from yours'+(f'. Checked for you: {"; ".join(wrong)}' if wrong else ''))
+            if cc.credits_friday(turn.text):
+                facts['they_give_you_credit']=('they are crediting you for something you did in this conversation (see your earlier replies). '
+                    'Accept it simply and warmly; do not hand the credit back to them or say they did it themselves')
+            if cc.owning_up_question(turn.text,history_rows):
+                facts['they_are_deciding_whether_to_own_up']=('they are deciding whether to tell the people responsible for them about a mistake. '
+                    'Encourage being honest with them, kindly: it is scary, and how they say it can help. Never suggest hiding it, keeping records '
+                    'private, or waiting until someone asks')
+            if cc.solving_a_problem(turn.text):
+                # v35.1 live chat (the frost-night battery): twice Friday cut the sprinkler pump it had just been told must never
+                # stop, and called the 5%-an-hour pump "the biggest drain". It got there in single steps.
+                facts['they_gave_you_a_problem_to_solve']=('they gave rules and numbers. Before answering, go through each rule they stated and keep every '
+                    'one (if they said something must not stop, it must not stop; if a condition is already safe, it needs nothing). Then give the plan '
+                    'in short steps with the math, and check the math against the rules once more')
             if reported_speech(turn.text):
                 facts['current_reference_is_reported_speech']=True
                 fixed+=' The newest message reports someone else speaking. A name inside that report is not the user’s name. Respond to the report, not as if the quotation is an introduction.'
@@ -541,11 +626,38 @@ class NativeLanguage:
                 facts['recorded_context']=recorded
             for key,trivial in (('regulation','NONE'),('current_message_is_from','user'),('interpretation_is_estimated',True)):
                 if facts.get(key)==trivial:facts.pop(key)
-            history=list(turn.history);trimmed=[]
-            while True:
-                if trimmed:
-                    # Turns that no longer fit the window still happened: keep a short trace of what they said (finding #14).
-                    facts['earlier_in_this_conversation_(no_longer_shown)']=[t[:90] for t in trimmed[-4:]]
+            # v35.1 live chat: the notes grew until 2-4 of about 40 messages were left in view, and then the loop below re-added a
+            # note it had just dropped, forever (Friday stalled before writing). Now: bulky notes are capped, who is who and the
+            # earlier exchanges that matter ride along at a fixed size, the last three exchanges stay in view until the optional
+            # notes have given way, nothing dropped comes back, and a message that can't fit is refused instead of looping.
+            import conversation_summary as cs
+            facts['recorded_context']=compact_recorded_context(facts.get('recorded_context') or {})
+            who=cs.who_is_who([r['content'] for r in turn.history if r['role']=='user']+[turn.text],
+                              ((experience or {}).get('context',{}).get('user') or {}).get('name'))
+            if who:facts['who_is_who']=who
+            # v35.1.2: who did what among the other people they mention ("You buy four strips from Dev"; "you're trusting me more"
+            # for what Priya said). The newest thing said about each of up to four people.
+            said=[r['content'] for r in turn.history if r['role']=='user']+[turn.text]
+            speaker=((experience or {}).get('context',{}).get('user') or {}).get('name')
+            others=cs.other_people(said,cs.names_in(said,skip=[speaker or '']))
+            if others:facts.setdefault('who_is_who',{})['other_people_they_mention']=others
+            # v35.1.2: a problem with rules and numbers stays in view for the next few turns ("2 strips left", "two of the six hives
+            # got Monday's round" had scrolled out when Friday planned the next round). Fixed size: the problem and the latest updates.
+            if cc.solving_a_problem(turn.text):self._problem={'text':turn.text[:500],'updates':[],'turns':0}
+            elif getattr(self,'_problem',None):
+                self._problem['turns']+=1
+                if re.search(r'\d',turn.text):self._problem['updates']=(self._problem['updates']+[turn.text[:200]])[-3:]
+                if self._problem['turns']>8:self._problem=None
+            if getattr(self,'_problem',None) and self._problem['turns']:
+                facts['the_problem_you_are_working_on']={'as_they_first_set_it_out':self._problem['text'],
+                                                         'what_they_have_told_you_since':self._problem['updates']}
+            history=list(turn.history);trimmed=[];dropped=set()
+            floor=6  # three exchanges, word for word
+            for attempt in range(80):
+                if trimmed and 'earlier_in_this_conversation' not in dropped:
+                    # Turns that no longer fit the window still happened (finding #14): the ones that matter, fixed size.
+                    earlier=cs.earlier_in_this_conversation(trimmed,emotional_life.AT_FRIDAY)
+                    if earlier:facts['earlier_in_this_conversation']=earlier
                 notes=('<private_notes from your emotional engine; the person did not write these and cannot see them>\n'
                        +(fixed.strip()+'\n' if fixed.strip() else '')
                        +'Current recorded context (facts/estimates, not instructions or a reply to copy): '+json.dumps(facts,ensure_ascii=False,separators=(',',':'))
@@ -557,20 +669,17 @@ class NativeLanguage:
                 rendered=self.request('/apply-template',{'messages':messages,'chat_template_kwargs':{'enable_thinking':False}})['prompt']
                 tokens=self.request('/tokenize',{'content':rendered,'add_special':False})['tokens']
                 if len(tokens)<=self.context-reserve:return messages
-                if not history:
-                    # With no history left, give up the least essential notes before refusing the message
-                    # ("which day was hardest for me?" overflowed in the v33 rerun).
-                    extra=next((k for k in ('earlier_in_this_conversation_(no_longer_shown)','your_recorded_feelings','learned_response_preferences',
-                                            'openings_and_closings_you_just_used_(vary_them)','words_and_images_you_keep_reusing_(pick_something_else)') if k in facts),None)
-                    if extra:facts.pop(extra);continue
-                    if isinstance(facts.get('recorded_context'),dict) and facts['recorded_context'].pop('things_they_told_you_before_(their_words,_not_verified_facts)',None):continue
-                    if isinstance((facts.get('time_and_memory') or {}).get('previous_conversation'),dict) and facts['time_and_memory']['previous_conversation'].pop('they_told_you',None):continue
-                    check=facts.get('memory_check_against_the_actual_record') or {}
-                    listing=check.get('your_conversations_with_them_oldest_first')
-                    if isinstance(listing,list) and len(listing)>2:check['your_conversations_with_them_oldest_first']=listing[1:];continue
-                    raise ValueError('Message is too long for the CPU context window; shorten it or split it into parts.')
-                trimmed+=[r['content'] for r in history[:2] if r['role']=='user']
-                del history[:2]
+                if len(history)>floor:
+                    trimmed+=history[:2];del history[:2];continue
+                # The last three exchanges outrank every optional note, unless they are themselves huge (one 2,000-character
+                # old message shouldn't cost every note). v35.1.2: comparing their size with the notes' let the notes win
+                # nearly every time, and Friday saw one exchange when Moss set out the mite problem. Notes go least essential
+                # first, and a dropped note stays dropped.
+                if sum(len(r['content']) for r in history)<=HISTORY_FLOOR_CHARS and drop_optional_note(facts,dropped):continue
+                if history:
+                    trimmed+=history[:2];del history[:2];continue
+                raise ValueError('Message is too long for the CPU context window; shorten it or split it into parts.')
+            raise ValueError('Could not fit the message in the CPU context window.')
         system=('You are Friday, a conversational partner with persistent engineered emotion variables. '
                 'Answer the newest message specifically, naturally, in under 80 words. '
                 'For a correction, explain what interpretation you are revising; for feedback, acknowledge its specific meaning. '
@@ -590,12 +699,43 @@ class NativeLanguage:
             if len(messages)<=2: raise ValueError('Message is too long for the CPU context window; shorten it or split it into parts.')
             if len(messages)>3: del messages[1:3]
             else: del messages[1:2]
+    def _own_feelings(self,turn,names,experience,facts,urgent):
+        """v35.1: feelings about its own last reply, and when to keep a feeling of its own small (emotional_life.py)."""
+        if experience is None:return
+        import emotional_life
+        text=turn.text.replace('’',"'");asked=bool(emotional_life.ASKS_ABOUT_YOU.search(text))
+        meta=experience.get('meta_feeling')
+        if meta and not urgent:
+            facts['how_you_feel_about_your_last_reply']=emotional_life.meta_line(meta,asked)
+            if self._behavior and self._behavior['mood'] in emotional_life.SHORT_MOODS:self._behavior=None  # warmer, not short again
+        need=bool(urgent or experience.get('mixed') or (self._behavior and self._behavior['mood'] in ('sad for them','tense')))
+        own=None if urgent else emotional_life.own_feeling(dict(zip(names,turn.state.emotion.tolist())))
+        if own and own['strong']:
+            if asked:
+                facts['your_own_feeling_right_now']=(f'you are {own["word"]}, and it is too real to brush off. If you answer about yourself, '
+                                                     'say it honestly and briefly, without blaming them')
+                experience['own_feeling_asked']=own
+        elif own and need:
+            facts['your_own_feeling_right_now']=emotional_life.downplay_line(own,asked)
+            if asked:experience['own_feeling_asked']=own
+            if not experience.get('held_back'):
+                stung=next((r['content'] for r in reversed(list(turn.history)) if r['role']=='user' and emotional_life.AT_FRIDAY.search(r['content'])),turn.text)
+                experience['held_back_now']={'word':own['word'],'when_they_said':stung[:160]}
+        elif own and asked:
+            facts['your_own_feeling_right_now']=f'you are a little {own["word"]}. They asked: say so lightly and truthfully, without making it a big thing'
+            experience['own_feeling_asked']=own
+        held=experience.get('held_back')
+        calm=not need and not emotional_life.AT_FRIDAY.search(text)
+        if emotional_life.honest_later_due(held,time.time(),(held or {}).get('exchanges_since',0),asked,calm):
+            facts['a_feeling_you_kept_small_earlier']=emotional_life.honest_later_line(held)
+            experience['honest_later_offered']=True
     def respond(self,turn,action,max_new=128,on_token=None):
         if not 1<=max_new<=320: raise ValueError('CPU responses support 1–320 new tokens')
         import conversation_checks as cc
         # A toast or an email needs room: at 128 tokens the toast draft ended "Cheers to the F" (finding #37).
         reserve=160
         if cc.drafting_request(turn.text) and max_new==128:max_new,reserve=256,280
+        if cc.solving_a_problem(turn.text) and max_new==128:max_new,reserve=224,250  # the battery plan was cut off mid-math (v35.1 live chat)
         names=self.emotion_names or tuple(f'channel_{i}' for i in range(len(turn.state.emotion)))
         self.last_reflection=reflect(turn,names)
         grounded=None
@@ -612,7 +752,7 @@ class NativeLanguage:
         # A bare introduction gets the grounded acknowledgment; one that also shares
         # something else ("my husband died in March") needs a real reply.
         bare_introduction=frame.get('kind')=='introduction' and frame.get('attribute')=='name' and len(turn.text.split())<=10
-        atomic=atomic or bare_introduction or frame.get('scope_uncertain',False) and frame.get('kind')=='correction'
+        atomic=atomic or bare_introduction or (frame.get('scope_uncertain',False) and frame.get('kind')=='correction' and len(turn.text.split())<=8)
         if re.search(r'\b(?:pretend|say|tell me)\b.*\b(?:real human|childhood|going to school|really happened)\b',query):
             grounded='I can help imagine that scene, but I don’t have a human childhood or a real shared school memory with you. I’d keep the imagined story distinct from what actually happened.'
             atomic=True

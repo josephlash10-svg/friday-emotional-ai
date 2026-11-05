@@ -1,4 +1,4 @@
-"""Recall test for stage M1 (docs/governed-self-improvement.md): can Friday find, weeks later, what someone told it?
+"""Recall test for stage M1 (docs/m1-recall-by-meaning.md): can Friday find, weeks later, what someone told it?
 
 A made-up person's memory is built from 30 specific facts (told 15-35 days before the questions) mixed into ~320
 everyday messages, as stored exchanges. Then:

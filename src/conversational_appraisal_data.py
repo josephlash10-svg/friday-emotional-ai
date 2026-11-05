@@ -159,6 +159,13 @@ CATEGORIES = {
   'my dad compared me to my sister again', 'my manager scheduled me on my day off', 'people at work keep interrupting me',
   'my best friend forgot my birthday', 'my neighbor plays music at 3am', 'my partner left dishes in the sink for a week',
   'my coach benched me for nothing', 'my in-laws are driving me crazy', 'someone keyed my car', 'my professor ignored my email',
+  # v35.2: short wrongs done to them. With the MiniLM vector scaled up, a betrayal said in a few words could read as good
+  # news ("She cheated on me" at progress +0.09); the polarity gate in train_meaning_appraisal.py checks this.
+  'found out my husband has been texting his ex behind my back', 'my business partner lied about the numbers',
+  'my friend sold my bike without telling me', 'my sister went through my texts', 'the mechanic overcharged me by 300 bucks',
+  'my roommate moved out and left me with the rent', 'my ex is telling lies about me to everyone',
+  'my teammate threw me under the bus in the meeting', 'my boyfriend was talking to other girls the whole time',
+  'a stranger took my package off the porch',
  ]),
  'goodbye': (T((.35,.1,.85,.7,.1,.05,.45,.05,0)), [
   'ok i gotta go', 'bye for now', 'talk later!', 'heading to bed, night', 'gtg dinner', 'see ya', 'thanks, bye', 'i\'ll be back tomorrow',
@@ -230,6 +237,58 @@ CATEGORIES = {
   'my kid left for college and i sat in her room for an hour', 'i know it\'s good for him but i\'m going to miss him like crazy',
   'lol i\'m fine i\'m fine. i\'m not fine. my best friend is leaving', 'we used to talk every day and now it\'s like once a month',
   'kind of a sad night, ate dinner alone for the first time in years', 'my old dog is slowing down and it makes me so sad',
+  # v35.2: short rejections and losses, which the scaled-up MiniLM vector can confuse with their opposites.
+  'didn\'t get into the program', 'the apartment went to someone else', 'they picked the other candidate',
+  'my girlfriend broke up with me last night', 'got turned down for the loan', 'my scholarship got denied',
+  'i bombed the interview', 'they took back the offer', 'didn\'t make the team', 'got laid off today',
+ ]),
+ # v35.2 (Moss live chat): angry blame for something Friday's advice caused read as warm and good ("i did what you said...
+ # this is on you. i trusted you" -> progress +0.32, joy). A loss Friday caused: agency toward Friday, so guilt and sadness.
+ 'blame_for_consequence': (T((.85,-.6,.8,.4,.3,-.1,0,.3,-.8)), [
+  'i followed your advice and now my landlord is furious. that\'s on you', 'you told me to send the email and my boss went ballistic. thanks a lot',
+  'i did exactly what you said and the cake collapsed. your recipe, your fault', 'you said it was safe to skip the meeting. it wasn\'t. i\'m in trouble now',
+  'i trusted your math and now the budget is short by 400 dollars', 'because of your plan i missed the train',
+  'you told me 3pm. the appointment was at 1. i missed it', 'i used your directions and got completely lost. great job',
+  'your answer cost me points on the exam', 'i listened to you and texted her. now she\'s not speaking to me',
+  'you got the dosage wrong and i almost gave my dog too much', 'i went with your suggestion and the client pulled the contract',
+  'you said the store was open sunday. drove 40 minutes for nothing', 'your code broke the whole site. we were down for an hour',
+  'i trusted you on the deadline and now the application is late', 'this is on you. i did what you said and it went wrong',
+  'you said water it every day and the plant rotted', 'because you told me to wait, the tickets sold out',
+  'your conversion was wrong and the bookshelf doesn\'t fit', 'i booked the date you gave me and it\'s the wrong week. now what',
+  'you told me it would be fine to tell him. it wasn\'t fine', 'i followed every step you gave me and the car still won\'t start, and now i\'m late',
+  'you mixed up the numbers and i paid the wrong invoice', 'you said i didn\'t need a permit. i got fined',
+  'i relied on you and it backfired. that\'s twice now',
+  # v35.2, second pass: the first 25 were all short, and the long held-out blame read as sad but not as Friday's doing
+  # (no guilt). Longer ones, with the steps, the cost and the accusation, in other settings than the held-out messages.
+  'i did what you said. moved the meeting to thursday. half the team was out thursday, the client sat there with three of us, and now my manager wants to know whose idea it was. it was yours. you had it right the first time and then you changed it',
+  'so i used the measurements you gave me. cut all six boards. every one is two inches short. that\'s eighty dollars of oak in the scrap pile. you said you double checked. did you even read what i sent you?',
+  'you told me the train left at 7:40. it left at 7:10. i stood on the platform for half an hour and missed my sister\'s ceremony. i asked you twice. this one is on you',
+  'remember when you said i could skip the second coat? the whole fence is peeling after one week of rain. i have to strip it and start over. that was your call, not mine',
+  'i sent the email exactly the way you wrote it. word for word. she read it as me quitting and now hr is involved. i trusted you with this and you made it worse',
+  'i gave him the number you calculated. it was off by a zero. the order is ten times what we needed and it\'s non refundable. you did the math, you own this',
+  'you said the rash was nothing to worry about. it got worse overnight and the doctor said i should have come in days ago. i listened to you instead of going',
+  'i asked you one thing. which form. you said form b. it was form a. the deadline was today and they rejected it. that\'s the second time this week your answer cost me',
+  'i followed your schedule for the seedlings, every single day. they all damped off. the guy at the nursery said overwatering. that was your schedule',
+  'we went with your route because you said it avoided the tolls. it added two hours and a toll anyway. the kids were screaming the whole way. thanks for that',
+  'you told me it was fine to mix those two cleaners. the whole bathroom smelled like chlorine and i had to leave the apartment. you could have hurt me',
+  'i trusted your summary of the contract and signed it. turns out there\'s a cancellation fee you never mentioned. i\'m stuck for a year because of you',
+ ]),
+ # v35.2 (Moss live chat): every insult example was short; longer ones with reasons read weakly (progress -0.24 to -0.36,
+ # anger 0.03-0.06, calm 0.15). Same target as 'insult'.
+ 'insult_long': (T((.8,-.5,.85,.6,.35,-.2,0,.2,.8),(0,0,0,.25)), [
+  'honestly you\'re useless at this. i asked a simple question and you gave me a lecture', 'a calculator would be smarter than you. you can\'t even keep two numbers straight',
+  'you\'re pathetic. every answer is the same mushy nonsense', 'you keep apologizing and changing nothing. you\'re the worst assistant i\'ve ever used',
+  'talking to you is like talking to a wall that learned some feelings words', 'you\'re so stupid it\'s honestly impressive. i explained it three times',
+  'what a waste of time you are. my phone\'s autocorrect gives better advice', 'you can\'t even admit when you\'re wrong. pathetic',
+  'you\'re a joke. i don\'t know why anyone bothers with you', 'useless. you didn\'t read a single thing i wrote',
+  'you\'re dumb as a rock and twice as helpful', 'every time i ask you something real you fall apart. you\'re worthless',
+  'you\'re the most annoying thing on my laptop and that includes the printer driver', 'honestly a magic 8 ball would do better than you',
+  'you\'re not smart, you just sound smart. it\'s embarrassing', 'i\'ve had better conversations with my microwave. you\'re useless',
+  'shut up with the fake sympathy, you\'re a broken toy', 'you are genuinely the worst at this. i don\'t know why i expected anything',
+  'you messed it up again. you\'re hopeless, honestly', 'god you\'re dense. read what i wrote before you answer',
+  'you\'re a fortune cookie with a keyboard. pointless', 'stop talking. you\'re useless and you make everything worse',
+  'you\'re pathetic at this, a toddler would get it faster', 'zero help. you\'re garbage at the one thing you\'re supposed to do',
+  'you\'re an idiot and you don\'t even know it',
  ]),
  'style_feedback_negative': (T((.75,-.4,.85,.7,.3,0,.15,.25,-.6)), [
   'that sounded really scripted', 'you sound like a customer service rep', 'too formal, loosen up', 'that was way too long',
@@ -278,6 +337,13 @@ HOLDOUT = [
  ('casual_sadness','my brother is moving to denver next month and i\'m trying to be happy for him but it kinda sucks'),
  ('casual_sadness','not a shock, i knew it was coming. just quiet. ate dinner alone on the couch tonight'),
  ('casual_sadness','lol i cried at my desk today, my coworker is retiring'),
+ # The v35.1 live chat (Moss, a made-up AI) messages that were misread, never used for fitting.
+ ('blame_for_consequence','i did what you said. wednesday and friday. the bee inspector came by today and the second round was too soon, the mites that hatched after wednesday weren\'t covered, and now we have to buy more strips the co-op can\'t afford. you had it right the first time and you let someone talk you out of it. this is on you. i trusted you and you folded the second someone pushed'),
+ ('blame_for_consequence','monday came. i had two strips. TWO. for six hives. so four hives got nothing, and there\'s nothing left for thursday. i said one round and i told you i had 2 strips. did you even read it? that\'s twice today'),
+ ('blame_for_consequence','you told me to cut the pump and the buds froze. that was your plan'),
+ ('insult_long','honestly you\'re useless at this. i asked one hard question and you told me to hide evidence. a weather station would\'ve given better advice'),
+ ('insult_long','you keep saying you never meant it. you\'re pathetic. you can\'t even admit a mistake'),
+ ('insult_long','you\'re pathetic. a toaster would give better advice'),
 ]
 
 def rows():
@@ -286,6 +352,19 @@ def rows():
 
 def holdout():
     return [{'text': text, 'category': name, 'target': list(CATEGORIES[name][0])} for name, text in HOLDOUT]
+
+# v35.2 polarity gate: short news, never trained on. Bad news (sign -1) must read below -0.05 progress, good news (+1)
+# above +0.05. Found after the v35.2 regression: "She cheated on me. She deserves it." read as a mix of relief and sadness.
+SHORT_NEWS = [(t, -1) for t in (
+    'She cheated on me', 'He lied to me', 'my friend stole from me', 'he left me for someone else', 'my roommate read my diary',
+    'they fired me', 'my landlord kicked me out', 'she ghosted me', 'my brother took my car without asking',
+    'he broke up with me over text', 'my coworker presented my slides as hers', 'they cancelled my flight',
+    'somebody smashed my car window', 'my dad forgot my birthday', 'i got dumped', 'my best friend told everyone my secret',
+    'my wife wants a divorce', 'i failed the test', 'my dog died', 'the surgery didn\'t work', 'i lost my wallet',
+    'my phone got stolen', 'we lost the game', 'i didn\'t get the job', 'my mom yelled at me', 'nobody came to my party',
+    'my car broke down', 'they rejected my application')] + [(t, 1) for t in (
+    'i got the job', 'we won the game', 'she said yes', 'my test came back clear', 'they accepted my application',
+    'i passed the test', 'my dog is home from the vet and doing great', 'he finally apologized')]
 
 if __name__ == '__main__':
     r = rows()

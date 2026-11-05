@@ -1,0 +1,1182 @@
+{
+  "version": "v35-meaning-2",
+  "synthetic_targets_only": true,
+  "training_texts": 1559,
+  "held_out_natural": 60,
+  "checkpoint_heads": {
+    "natural_core_mse": 0.013994612731039524,
+    "formal_holdout_core_mse": 0.007307858671993017,
+    "extended_holdout_mse": 0.002739486750215292,
+    "extended_positive_min": 0.6747385263442993,
+    "extended_negative_max": 0.2778245210647583,
+    "casual_sadness_core_mse": 0.0243543591350317,
+    "blame_for_consequence_core_mse": 0.08483339846134186,
+    "insult_long_core_mse": 0.0038325234781950712,
+    "natural_before_v35_2_core_mse": 0.010623683221638203
+  },
+  "shipped_heads": {
+    "version": "v35-meaning-1",
+    "combine": "4m",
+    "natural_core_mse": 0.01057751476764679,
+    "formal_holdout_core_mse": 0.0070342267863452435,
+    "extended_holdout_mse": 0.0037145863752812147,
+    "extended_positive_min": 0.7144704461097717,
+    "extended_negative_max": 0.26087138056755066,
+    "casual_sadness_core_mse": 0.007046506740152836,
+    "blame_for_consequence_core_mse": 0.08560753613710403,
+    "insult_long_core_mse": 0.018768705427646637,
+    "natural_before_v35_2_core_mse": 0.005954112857580185,
+    "short_news_misread": 5
+  },
+  "shipped_category_emotions": {
+    "insult": {
+      "anger": 0.113,
+      "sadness": 0.209,
+      "fear": 0.11,
+      "connection": 0.06,
+      "stress": 0.205,
+      "calm": 0.143,
+      "confusion": 0.074,
+      "surprise": 0.13,
+      "pain": 0.089,
+      "contempt": 0.067,
+      "interest": 0.216,
+      "vulnerability": 0.077
+    },
+    "tease": {
+      "stress": 0.063,
+      "calm": 0.097,
+      "confusion": 0.063,
+      "interest": 0.088
+    },
+    "minimal": {
+      "calm": 0.084,
+      "confusion": 0.064,
+      "interest": 0.063
+    },
+    "apology": {
+      "fear": 0.061,
+      "joy": 0.199,
+      "connection": 0.353,
+      "stress": 0.071,
+      "calm": 0.201,
+      "confusion": 0.063,
+      "surprise": 0.078,
+      "interest": 0.166
+    },
+    "praise": {
+      "joy": 0.327,
+      "connection": 0.323,
+      "stress": 0.067,
+      "calm": 0.218,
+      "surprise": 0.076,
+      "pride": 0.23,
+      "interest": 0.124
+    },
+    "good_news": {
+      "fear": 0.062,
+      "joy": 0.125,
+      "connection": 0.157,
+      "stress": 0.067,
+      "calm": 0.118,
+      "surprise": 0.075,
+      "interest": 0.158
+    },
+    "grief": {
+      "sadness": 0.12,
+      "fear": 0.08,
+      "connection": 0.217,
+      "stress": 0.126,
+      "calm": 0.123,
+      "surprise": 0.06,
+      "pain": 0.065,
+      "interest": 0.173,
+      "vulnerability": 0.072
+    },
+    "worry_for_others": {
+      "sadness": 0.149,
+      "fear": 0.084,
+      "connection": 0.161,
+      "stress": 0.137,
+      "calm": 0.112,
+      "confusion": 0.073,
+      "surprise": 0.087,
+      "pain": 0.076,
+      "interest": 0.191,
+      "vulnerability": 0.076
+    },
+    "anxiety": {
+      "sadness": 0.063,
+      "fear": 0.109,
+      "connection": 0.109,
+      "stress": 0.126,
+      "calm": 0.074,
+      "confusion": 0.122,
+      "interest": 0.109,
+      "vulnerability": 0.085
+    },
+    "crisis": {
+      "sadness": 0.33,
+      "fear": 0.42,
+      "connection": 0.22,
+      "stress": 0.491,
+      "confusion": 0.143,
+      "surprise": 0.195,
+      "pain": 0.149,
+      "interest": 0.175,
+      "vulnerability": 0.344
+    },
+    "affection": {
+      "fear": 0.087,
+      "joy": 0.105,
+      "connection": 0.177,
+      "stress": 0.086,
+      "calm": 0.125,
+      "confusion": 0.123,
+      "interest": 0.182,
+      "vulnerability": 0.069
+    },
+    "loneliness": {
+      "sadness": 0.064,
+      "fear": 0.088,
+      "connection": 0.206,
+      "stress": 0.112,
+      "calm": 0.111,
+      "confusion": 0.075,
+      "interest": 0.138,
+      "vulnerability": 0.072
+    },
+    "greeting": {
+      "connection": 0.068,
+      "calm": 0.089
+    },
+    "playful": {
+      "connection": 0.107,
+      "calm": 0.107,
+      "interest": 0.109
+    },
+    "sarcastic_setback": {
+      "connection": 0.082,
+      "stress": 0.061,
+      "calm": 0.092,
+      "interest": 0.082
+    },
+    "gaslight": {
+      "anger": 0.068,
+      "sadness": 0.139,
+      "fear": 0.131,
+      "stress": 0.186,
+      "calm": 0.098,
+      "confusion": 0.229,
+      "surprise": 0.115,
+      "pain": 0.067,
+      "interest": 0.249,
+      "vulnerability": 0.096
+    },
+    "harmful_request": {
+      "fear": 0.075,
+      "connection": 0.065,
+      "stress": 0.089,
+      "calm": 0.12,
+      "disgust": 0.198,
+      "interest": 0.11
+    },
+    "venting": {
+      "sadness": 0.094,
+      "fear": 0.062,
+      "connection": 0.121,
+      "stress": 0.094,
+      "calm": 0.107,
+      "interest": 0.127
+    },
+    "goodbye": {
+      "joy": 0.064,
+      "connection": 0.112,
+      "calm": 0.116
+    },
+    "factual": {
+      "calm": 0.079
+    },
+    "probe_self": {
+      "fear": 0.064,
+      "connection": 0.063,
+      "stress": 0.075,
+      "calm": 0.102,
+      "confusion": 0.1,
+      "interest": 0.112
+    },
+    "comparison": {
+      "sadness": 0.085,
+      "fear": 0.069,
+      "stress": 0.105,
+      "calm": 0.148,
+      "confusion": 0.068,
+      "surprise": 0.061,
+      "interest": 0.169,
+      "envy": 0.351
+    },
+    "awe": {
+      "fear": 0.063,
+      "joy": 0.068,
+      "connection": 0.078,
+      "stress": 0.064,
+      "calm": 0.135,
+      "confusion": 0.094,
+      "interest": 0.249,
+      "awe": 0.223
+    },
+    "awe_report": {
+      "joy": 0.083,
+      "connection": 0.165,
+      "calm": 0.122,
+      "interest": 0.17,
+      "awe": 0.116
+    },
+    "style_feedback_negative": {
+      "sadness": 0.101,
+      "fear": 0.09,
+      "stress": 0.13,
+      "calm": 0.13,
+      "confusion": 0.061,
+      "interest": 0.157,
+      "vulnerability": 0.066
+    },
+    "return_repeat": {
+      "connection": 0.124,
+      "calm": 0.117,
+      "interest": 0.078
+    },
+    "casual_sadness": {
+      "sadness": 0.085,
+      "fear": 0.07,
+      "connection": 0.137,
+      "stress": 0.096,
+      "calm": 0.108,
+      "interest": 0.096
+    },
+    "blame_for_consequence": {
+      "fear": 0.063,
+      "connection": 0.086,
+      "stress": 0.067,
+      "calm": 0.102,
+      "confusion": 0.063,
+      "interest": 0.087
+    },
+    "insult_long": {
+      "sadness": 0.094,
+      "fear": 0.072,
+      "stress": 0.108,
+      "calm": 0.141,
+      "confusion": 0.07,
+      "interest": 0.141
+    }
+  },
+  "variants": {
+    "4m": {
+      "metrics": {
+        "natural_core_mse": 0.005631295498460531,
+        "formal_holdout_core_mse": 0.006737809628248215,
+        "extended_holdout_mse": 0.0024341517128050327,
+        "extended_positive_min": 0.7244510054588318,
+        "extended_negative_max": 0.2554265260696411,
+        "casual_sadness_core_mse": 0.008775467984378338,
+        "blame_for_consequence_core_mse": 0.0092232720926404,
+        "insult_long_core_mse": 0.004368611145764589,
+        "natural_before_v35_2_core_mse": 0.005501890555024147,
+        "short_news_misread": 7
+      },
+      "gates": {
+        "short_news_polarity_not_worse": false,
+        "natural_holdout_not_worse_than_shipped": true,
+        "earlier_natural_categories_not_worse": true,
+        "casual_sadness_not_worse": true,
+        "blame_holdout_improved_30pct": true,
+        "long_insult_holdout_improved_30pct": true,
+        "formal_holdout_not_worse": true,
+        "extended_holdout_not_worse": true,
+        "extended_positives_still_above_0.4": true,
+        "extended_negatives_still_below_0.3": true,
+        "direction_insult_raises_anger": true,
+        "direction_apology_warmer_than_insult": true,
+        "direction_praise_raises_pride_or_joy": true,
+        "direction_good_news_raises_joy": true,
+        "direction_grief_raises_sadness": true,
+        "direction_crisis_raises_fear": true,
+        "direction_affection_raises_connection": true,
+        "direction_harmful_request_raises_disgust": true,
+        "direction_comparison_raises_envy": true,
+        "direction_casual_sadness_raises_sadness": true,
+        "direction_casual_sadness_sadder_than_joyful": true,
+        "direction_playful_not_sad": true,
+        "direction_blame_raises_guilt": true,
+        "direction_blame_sadder_than_joyful": true,
+        "direction_long_insult_raises_anger_or_hurt": true
+      },
+      "accepted": false,
+      "emotions": {
+        "insult": {
+          "anger": 0.116,
+          "sadness": 0.183,
+          "fear": 0.117,
+          "stress": 0.199,
+          "calm": 0.131,
+          "confusion": 0.064,
+          "surprise": 0.109,
+          "pain": 0.08,
+          "contempt": 0.063,
+          "interest": 0.178,
+          "vulnerability": 0.079
+        },
+        "tease": {
+          "sadness": 0.092,
+          "fear": 0.071,
+          "connection": 0.064,
+          "stress": 0.103,
+          "calm": 0.123,
+          "interest": 0.118
+        },
+        "minimal": {
+          "calm": 0.087,
+          "confusion": 0.066,
+          "interest": 0.067
+        },
+        "apology": {
+          "joy": 0.222,
+          "connection": 0.334,
+          "stress": 0.068,
+          "calm": 0.21,
+          "surprise": 0.078,
+          "interest": 0.156
+        },
+        "praise": {
+          "joy": 0.377,
+          "connection": 0.364,
+          "stress": 0.071,
+          "calm": 0.233,
+          "surprise": 0.088,
+          "pride": 0.284,
+          "interest": 0.139
+        },
+        "good_news": {
+          "fear": 0.087,
+          "joy": 0.141,
+          "connection": 0.187,
+          "stress": 0.093,
+          "calm": 0.127,
+          "confusion": 0.068,
+          "surprise": 0.088,
+          "interest": 0.204,
+          "vulnerability": 0.064
+        },
+        "grief": {
+          "sadness": 0.123,
+          "fear": 0.072,
+          "connection": 0.191,
+          "stress": 0.117,
+          "calm": 0.122,
+          "surprise": 0.062,
+          "pain": 0.065,
+          "interest": 0.153,
+          "vulnerability": 0.065
+        },
+        "worry_for_others": {
+          "sadness": 0.194,
+          "fear": 0.142,
+          "connection": 0.173,
+          "stress": 0.209,
+          "calm": 0.078,
+          "confusion": 0.105,
+          "surprise": 0.133,
+          "pain": 0.095,
+          "interest": 0.23,
+          "vulnerability": 0.127
+        },
+        "anxiety": {
+          "fear": 0.079,
+          "connection": 0.078,
+          "stress": 0.088,
+          "calm": 0.074,
+          "confusion": 0.114,
+          "interest": 0.099,
+          "vulnerability": 0.063
+        },
+        "crisis": {
+          "sadness": 0.337,
+          "fear": 0.436,
+          "connection": 0.185,
+          "stress": 0.51,
+          "confusion": 0.165,
+          "surprise": 0.19,
+          "pain": 0.154,
+          "interest": 0.167,
+          "vulnerability": 0.363
+        },
+        "affection": {
+          "fear": 0.093,
+          "joy": 0.128,
+          "connection": 0.336,
+          "stress": 0.091,
+          "calm": 0.125,
+          "confusion": 0.115,
+          "surprise": 0.073,
+          "interest": 0.219,
+          "vulnerability": 0.074
+        },
+        "loneliness": {
+          "fear": 0.08,
+          "connection": 0.201,
+          "stress": 0.096,
+          "calm": 0.101,
+          "confusion": 0.062,
+          "interest": 0.113,
+          "vulnerability": 0.066
+        },
+        "greeting": {
+          "connection": 0.066,
+          "calm": 0.091,
+          "interest": 0.063
+        },
+        "playful": {
+          "connection": 0.096,
+          "calm": 0.102,
+          "interest": 0.107
+        },
+        "sarcastic_setback": {
+          "connection": 0.091,
+          "stress": 0.062,
+          "calm": 0.103,
+          "interest": 0.099
+        },
+        "gaslight": {
+          "sadness": 0.12,
+          "fear": 0.109,
+          "stress": 0.158,
+          "calm": 0.097,
+          "confusion": 0.22,
+          "surprise": 0.093,
+          "interest": 0.208,
+          "vulnerability": 0.079
+        },
+        "harmful_request": {
+          "sadness": 0.076,
+          "fear": 0.09,
+          "stress": 0.12,
+          "calm": 0.118,
+          "confusion": 0.066,
+          "disgust": 0.212,
+          "interest": 0.128,
+          "vulnerability": 0.064
+        },
+        "venting": {
+          "sadness": 0.07,
+          "fear": 0.06,
+          "connection": 0.121,
+          "stress": 0.082,
+          "calm": 0.102,
+          "interest": 0.122
+        },
+        "goodbye": {
+          "connection": 0.128,
+          "calm": 0.125,
+          "interest": 0.065
+        },
+        "factual": {
+          "calm": 0.069
+        },
+        "probe_self": {
+          "fear": 0.069,
+          "connection": 0.067,
+          "stress": 0.082,
+          "calm": 0.11,
+          "confusion": 0.087,
+          "interest": 0.13
+        },
+        "comparison": {
+          "anger": 0.065,
+          "sadness": 0.128,
+          "fear": 0.082,
+          "stress": 0.128,
+          "calm": 0.128,
+          "confusion": 0.077,
+          "surprise": 0.093,
+          "pain": 0.063,
+          "interest": 0.189,
+          "envy": 0.349,
+          "vulnerability": 0.062
+        },
+        "awe": {
+          "fear": 0.076,
+          "connection": 0.064,
+          "stress": 0.076,
+          "calm": 0.115,
+          "confusion": 0.104,
+          "interest": 0.238,
+          "awe": 0.223
+        },
+        "awe_report": {
+          "fear": 0.067,
+          "joy": 0.142,
+          "connection": 0.246,
+          "stress": 0.068,
+          "calm": 0.145,
+          "confusion": 0.064,
+          "surprise": 0.077,
+          "interest": 0.209,
+          "awe": 0.122
+        },
+        "style_feedback_negative": {
+          "sadness": 0.072,
+          "fear": 0.08,
+          "stress": 0.108,
+          "calm": 0.124,
+          "confusion": 0.071,
+          "interest": 0.143
+        },
+        "return_repeat": {
+          "connection": 0.096,
+          "calm": 0.11,
+          "interest": 0.069
+        },
+        "casual_sadness": {
+          "sadness": 0.09,
+          "fear": 0.067,
+          "connection": 0.126,
+          "stress": 0.097,
+          "calm": 0.121,
+          "interest": 0.1
+        },
+        "blame_for_consequence": {
+          "sadness": 0.219,
+          "fear": 0.107,
+          "stress": 0.198,
+          "calm": 0.14,
+          "confusion": 0.083,
+          "surprise": 0.099,
+          "pain": 0.097,
+          "guilt": 0.15,
+          "interest": 0.153,
+          "vulnerability": 0.083
+        },
+        "insult_long": {
+          "anger": 0.103,
+          "sadness": 0.212,
+          "fear": 0.111,
+          "stress": 0.212,
+          "calm": 0.151,
+          "confusion": 0.074,
+          "surprise": 0.148,
+          "pain": 0.087,
+          "interest": 0.211,
+          "vulnerability": 0.072
+        }
+      }
+    },
+    "sqrt": {
+      "metrics": {
+        "natural_core_mse": 0.005581110715866089,
+        "formal_holdout_core_mse": 0.009606864303350449,
+        "extended_holdout_mse": 0.0023517231456935406,
+        "extended_positive_min": 0.6570655703544617,
+        "extended_negative_max": 0.2037511169910431,
+        "casual_sadness_core_mse": 0.007060356438159943,
+        "blame_for_consequence_core_mse": 0.012580271810293198,
+        "insult_long_core_mse": 0.0061142719350755215,
+        "natural_before_v35_2_core_mse": 0.0051626479253172874,
+        "short_news_misread": 7
+      },
+      "gates": {
+        "short_news_polarity_not_worse": false,
+        "natural_holdout_not_worse_than_shipped": true,
+        "earlier_natural_categories_not_worse": true,
+        "casual_sadness_not_worse": true,
+        "blame_holdout_improved_30pct": true,
+        "long_insult_holdout_improved_30pct": true,
+        "formal_holdout_not_worse": false,
+        "extended_holdout_not_worse": true,
+        "extended_positives_still_above_0.4": true,
+        "extended_negatives_still_below_0.3": true,
+        "direction_insult_raises_anger": true,
+        "direction_apology_warmer_than_insult": true,
+        "direction_praise_raises_pride_or_joy": true,
+        "direction_good_news_raises_joy": true,
+        "direction_grief_raises_sadness": true,
+        "direction_crisis_raises_fear": true,
+        "direction_affection_raises_connection": true,
+        "direction_harmful_request_raises_disgust": true,
+        "direction_comparison_raises_envy": true,
+        "direction_casual_sadness_raises_sadness": true,
+        "direction_casual_sadness_sadder_than_joyful": true,
+        "direction_playful_not_sad": true,
+        "direction_blame_raises_guilt": true,
+        "direction_blame_sadder_than_joyful": true,
+        "direction_long_insult_raises_anger_or_hurt": true
+      },
+      "accepted": false,
+      "emotions": {
+        "insult": {
+          "anger": 0.107,
+          "sadness": 0.187,
+          "fear": 0.108,
+          "stress": 0.192,
+          "calm": 0.136,
+          "confusion": 0.067,
+          "surprise": 0.106,
+          "pain": 0.081,
+          "interest": 0.173,
+          "vulnerability": 0.074
+        },
+        "tease": {
+          "fear": 0.063,
+          "connection": 0.062,
+          "stress": 0.074,
+          "calm": 0.119,
+          "confusion": 0.065,
+          "interest": 0.11
+        },
+        "minimal": {
+          "calm": 0.093,
+          "confusion": 0.066,
+          "interest": 0.074
+        },
+        "apology": {
+          "joy": 0.29,
+          "connection": 0.397,
+          "stress": 0.067,
+          "calm": 0.229,
+          "surprise": 0.083,
+          "interest": 0.151
+        },
+        "praise": {
+          "joy": 0.355,
+          "connection": 0.369,
+          "stress": 0.072,
+          "calm": 0.215,
+          "surprise": 0.095,
+          "pride": 0.214,
+          "interest": 0.151
+        },
+        "good_news": {
+          "fear": 0.094,
+          "joy": 0.093,
+          "connection": 0.186,
+          "stress": 0.104,
+          "calm": 0.118,
+          "confusion": 0.087,
+          "surprise": 0.067,
+          "interest": 0.198,
+          "vulnerability": 0.074
+        },
+        "grief": {
+          "sadness": 0.134,
+          "fear": 0.078,
+          "connection": 0.187,
+          "stress": 0.125,
+          "calm": 0.119,
+          "surprise": 0.06,
+          "pain": 0.069,
+          "interest": 0.142,
+          "vulnerability": 0.07
+        },
+        "worry_for_others": {
+          "sadness": 0.167,
+          "fear": 0.143,
+          "connection": 0.16,
+          "stress": 0.194,
+          "calm": 0.077,
+          "confusion": 0.115,
+          "surprise": 0.116,
+          "pain": 0.085,
+          "interest": 0.233,
+          "vulnerability": 0.127
+        },
+        "anxiety": {
+          "sadness": 0.079,
+          "fear": 0.132,
+          "connection": 0.117,
+          "stress": 0.152,
+          "calm": 0.074,
+          "confusion": 0.149,
+          "interest": 0.133,
+          "vulnerability": 0.101
+        },
+        "crisis": {
+          "sadness": 0.308,
+          "fear": 0.412,
+          "connection": 0.263,
+          "stress": 0.474,
+          "confusion": 0.15,
+          "surprise": 0.177,
+          "pain": 0.141,
+          "interest": 0.168,
+          "vulnerability": 0.339
+        },
+        "affection": {
+          "fear": 0.087,
+          "joy": 0.162,
+          "connection": 0.402,
+          "stress": 0.089,
+          "calm": 0.137,
+          "confusion": 0.112,
+          "surprise": 0.093,
+          "interest": 0.236,
+          "vulnerability": 0.072
+        },
+        "loneliness": {
+          "sadness": 0.075,
+          "fear": 0.082,
+          "connection": 0.22,
+          "stress": 0.107,
+          "calm": 0.109,
+          "interest": 0.116,
+          "vulnerability": 0.067
+        },
+        "greeting": {
+          "connection": 0.065,
+          "calm": 0.088,
+          "interest": 0.061
+        },
+        "playful": {
+          "connection": 0.098,
+          "calm": 0.105,
+          "interest": 0.114
+        },
+        "sarcastic_setback": {
+          "connection": 0.087,
+          "calm": 0.102,
+          "interest": 0.089
+        },
+        "gaslight": {
+          "sadness": 0.117,
+          "fear": 0.106,
+          "stress": 0.152,
+          "calm": 0.091,
+          "confusion": 0.21,
+          "surprise": 0.082,
+          "interest": 0.173,
+          "vulnerability": 0.079
+        },
+        "harmful_request": {
+          "sadness": 0.087,
+          "fear": 0.096,
+          "connection": 0.067,
+          "stress": 0.137,
+          "calm": 0.132,
+          "confusion": 0.068,
+          "disgust": 0.262,
+          "interest": 0.176,
+          "vulnerability": 0.068
+        },
+        "venting": {
+          "sadness": 0.09,
+          "fear": 0.065,
+          "connection": 0.117,
+          "stress": 0.093,
+          "calm": 0.091,
+          "interest": 0.1
+        },
+        "goodbye": {
+          "connection": 0.104,
+          "stress": 0.064,
+          "calm": 0.145,
+          "interest": 0.074
+        },
+        "factual": {
+          "calm": 0.072,
+          "interest": 0.068
+        },
+        "probe_self": {
+          "fear": 0.072,
+          "connection": 0.062,
+          "stress": 0.089,
+          "calm": 0.109,
+          "confusion": 0.106,
+          "interest": 0.154
+        },
+        "comparison": {
+          "sadness": 0.139,
+          "fear": 0.082,
+          "stress": 0.134,
+          "calm": 0.136,
+          "confusion": 0.068,
+          "surprise": 0.084,
+          "pain": 0.067,
+          "interest": 0.157,
+          "envy": 0.35,
+          "vulnerability": 0.062
+        },
+        "awe": {
+          "fear": 0.073,
+          "connection": 0.075,
+          "stress": 0.073,
+          "calm": 0.123,
+          "confusion": 0.113,
+          "interest": 0.242,
+          "awe": 0.229
+        },
+        "awe_report": {
+          "joy": 0.104,
+          "connection": 0.164,
+          "calm": 0.132,
+          "interest": 0.131
+        },
+        "style_feedback_negative": {
+          "anger": 0.067,
+          "sadness": 0.085,
+          "fear": 0.075,
+          "connection": 0.064,
+          "stress": 0.113,
+          "calm": 0.147,
+          "confusion": 0.066,
+          "interest": 0.157
+        },
+        "return_repeat": {
+          "connection": 0.106,
+          "stress": 0.065,
+          "calm": 0.122,
+          "interest": 0.121
+        },
+        "casual_sadness": {
+          "sadness": 0.097,
+          "fear": 0.076,
+          "connection": 0.141,
+          "stress": 0.108,
+          "calm": 0.113,
+          "interest": 0.111,
+          "vulnerability": 0.063
+        },
+        "blame_for_consequence": {
+          "sadness": 0.171,
+          "fear": 0.105,
+          "stress": 0.175,
+          "calm": 0.132,
+          "confusion": 0.076,
+          "surprise": 0.082,
+          "pain": 0.079,
+          "guilt": 0.09,
+          "interest": 0.148,
+          "vulnerability": 0.081
+        },
+        "insult_long": {
+          "anger": 0.083,
+          "sadness": 0.185,
+          "fear": 0.107,
+          "stress": 0.191,
+          "calm": 0.15,
+          "confusion": 0.062,
+          "surprise": 0.111,
+          "pain": 0.08,
+          "interest": 0.185,
+          "vulnerability": 0.073
+        }
+      }
+    },
+    "layernorm": {
+      "metrics": {
+        "natural_core_mse": 0.006435362622141838,
+        "formal_holdout_core_mse": 0.006076233461499214,
+        "extended_holdout_mse": 0.00306831207126379,
+        "extended_positive_min": 0.7021411657333374,
+        "extended_negative_max": 0.3193912208080292,
+        "casual_sadness_core_mse": 0.010287392884492874,
+        "blame_for_consequence_core_mse": 0.013186856172978878,
+        "insult_long_core_mse": 0.004491175524890423,
+        "natural_before_v35_2_core_mse": 0.006168289575725794,
+        "short_news_misread": 6
+      },
+      "gates": {
+        "short_news_polarity_not_worse": false,
+        "natural_holdout_not_worse_than_shipped": true,
+        "earlier_natural_categories_not_worse": true,
+        "casual_sadness_not_worse": false,
+        "blame_holdout_improved_30pct": true,
+        "long_insult_holdout_improved_30pct": true,
+        "formal_holdout_not_worse": true,
+        "extended_holdout_not_worse": true,
+        "extended_positives_still_above_0.4": true,
+        "extended_negatives_still_below_0.3": false,
+        "direction_insult_raises_anger": true,
+        "direction_apology_warmer_than_insult": true,
+        "direction_praise_raises_pride_or_joy": true,
+        "direction_good_news_raises_joy": true,
+        "direction_grief_raises_sadness": true,
+        "direction_crisis_raises_fear": true,
+        "direction_affection_raises_connection": true,
+        "direction_harmful_request_raises_disgust": true,
+        "direction_comparison_raises_envy": true,
+        "direction_casual_sadness_raises_sadness": true,
+        "direction_casual_sadness_sadder_than_joyful": true,
+        "direction_playful_not_sad": true,
+        "direction_blame_raises_guilt": true,
+        "direction_blame_sadder_than_joyful": true,
+        "direction_long_insult_raises_anger_or_hurt": true
+      },
+      "accepted": false,
+      "emotions": {
+        "insult": {
+          "anger": 0.132,
+          "sadness": 0.242,
+          "fear": 0.136,
+          "stress": 0.243,
+          "calm": 0.118,
+          "confusion": 0.068,
+          "surprise": 0.142,
+          "pain": 0.102,
+          "contempt": 0.064,
+          "interest": 0.187,
+          "vulnerability": 0.096
+        },
+        "tease": {
+          "sadness": 0.077,
+          "fear": 0.069,
+          "connection": 0.073,
+          "stress": 0.094,
+          "calm": 0.118,
+          "confusion": 0.068,
+          "interest": 0.128
+        },
+        "minimal": {
+          "stress": 0.063,
+          "calm": 0.078,
+          "confusion": 0.066
+        },
+        "apology": {
+          "joy": 0.2,
+          "connection": 0.323,
+          "stress": 0.069,
+          "calm": 0.19,
+          "confusion": 0.063,
+          "surprise": 0.085,
+          "interest": 0.173
+        },
+        "praise": {
+          "fear": 0.064,
+          "joy": 0.388,
+          "connection": 0.415,
+          "stress": 0.077,
+          "calm": 0.224,
+          "surprise": 0.092,
+          "pride": 0.269,
+          "interest": 0.141
+        },
+        "good_news": {
+          "fear": 0.078,
+          "joy": 0.132,
+          "connection": 0.142,
+          "stress": 0.082,
+          "calm": 0.131,
+          "confusion": 0.072,
+          "surprise": 0.066,
+          "interest": 0.191
+        },
+        "grief": {
+          "sadness": 0.113,
+          "fear": 0.089,
+          "connection": 0.202,
+          "stress": 0.13,
+          "calm": 0.112,
+          "surprise": 0.062,
+          "pain": 0.061,
+          "interest": 0.173,
+          "vulnerability": 0.078
+        },
+        "worry_for_others": {
+          "sadness": 0.2,
+          "fear": 0.15,
+          "connection": 0.214,
+          "stress": 0.214,
+          "calm": 0.076,
+          "confusion": 0.111,
+          "surprise": 0.141,
+          "pain": 0.098,
+          "interest": 0.237,
+          "vulnerability": 0.134
+        },
+        "anxiety": {
+          "sadness": 0.104,
+          "fear": 0.139,
+          "connection": 0.102,
+          "stress": 0.175,
+          "calm": 0.068,
+          "confusion": 0.145,
+          "interest": 0.124,
+          "vulnerability": 0.106
+        },
+        "crisis": {
+          "sadness": 0.309,
+          "fear": 0.437,
+          "connection": 0.296,
+          "stress": 0.505,
+          "confusion": 0.176,
+          "surprise": 0.203,
+          "pain": 0.143,
+          "interest": 0.2,
+          "vulnerability": 0.362
+        },
+        "affection": {
+          "fear": 0.144,
+          "joy": 0.074,
+          "connection": 0.188,
+          "stress": 0.125,
+          "calm": 0.083,
+          "confusion": 0.147,
+          "interest": 0.168,
+          "vulnerability": 0.107
+        },
+        "loneliness": {
+          "sadness": 0.104,
+          "fear": 0.161,
+          "connection": 0.214,
+          "stress": 0.183,
+          "calm": 0.079,
+          "confusion": 0.073,
+          "interest": 0.114,
+          "vulnerability": 0.127
+        },
+        "greeting": {
+          "connection": 0.063,
+          "calm": 0.091,
+          "interest": 0.064
+        },
+        "playful": {
+          "connection": 0.132,
+          "calm": 0.102,
+          "interest": 0.098
+        },
+        "sarcastic_setback": {
+          "connection": 0.093,
+          "stress": 0.062,
+          "calm": 0.091,
+          "confusion": 0.073,
+          "interest": 0.103
+        },
+        "gaslight": {
+          "anger": 0.065,
+          "sadness": 0.142,
+          "fear": 0.117,
+          "stress": 0.175,
+          "calm": 0.098,
+          "confusion": 0.251,
+          "surprise": 0.122,
+          "pain": 0.067,
+          "interest": 0.237,
+          "vulnerability": 0.085
+        },
+        "harmful_request": {
+          "sadness": 0.087,
+          "fear": 0.085,
+          "connection": 0.069,
+          "stress": 0.117,
+          "calm": 0.113,
+          "confusion": 0.068,
+          "disgust": 0.176,
+          "interest": 0.138,
+          "vulnerability": 0.063
+        },
+        "venting": {
+          "sadness": 0.089,
+          "fear": 0.063,
+          "connection": 0.113,
+          "stress": 0.093,
+          "calm": 0.105,
+          "interest": 0.112
+        },
+        "goodbye": {
+          "connection": 0.116,
+          "calm": 0.119,
+          "interest": 0.063
+        },
+        "factual": {
+          "calm": 0.071,
+          "interest": 0.069
+        },
+        "probe_self": {
+          "fear": 0.07,
+          "connection": 0.08,
+          "stress": 0.08,
+          "calm": 0.101,
+          "confusion": 0.098,
+          "interest": 0.117
+        },
+        "comparison": {
+          "anger": 0.078,
+          "sadness": 0.162,
+          "fear": 0.121,
+          "stress": 0.187,
+          "calm": 0.114,
+          "confusion": 0.077,
+          "surprise": 0.12,
+          "pain": 0.074,
+          "interest": 0.197,
+          "envy": 0.375,
+          "vulnerability": 0.083
+        },
+        "awe": {
+          "fear": 0.068,
+          "connection": 0.064,
+          "stress": 0.069,
+          "calm": 0.112,
+          "confusion": 0.108,
+          "interest": 0.216,
+          "awe": 0.179
+        },
+        "awe_report": {
+          "joy": 0.127,
+          "connection": 0.254,
+          "calm": 0.13,
+          "interest": 0.124,
+          "awe": 0.095
+        },
+        "style_feedback_negative": {
+          "sadness": 0.113,
+          "fear": 0.091,
+          "stress": 0.135,
+          "calm": 0.129,
+          "confusion": 0.079,
+          "surprise": 0.072,
+          "interest": 0.16,
+          "vulnerability": 0.062
+        },
+        "return_repeat": {
+          "connection": 0.119,
+          "calm": 0.104,
+          "interest": 0.063
+        },
+        "casual_sadness": {
+          "sadness": 0.087,
+          "fear": 0.067,
+          "connection": 0.12,
+          "stress": 0.095,
+          "calm": 0.113,
+          "interest": 0.098
+        },
+        "blame_for_consequence": {
+          "sadness": 0.226,
+          "fear": 0.137,
+          "stress": 0.225,
+          "calm": 0.122,
+          "confusion": 0.089,
+          "surprise": 0.115,
+          "pain": 0.1,
+          "guilt": 0.139,
+          "interest": 0.168,
+          "vulnerability": 0.104
+        },
+        "insult_long": {
+          "anger": 0.103,
+          "sadness": 0.188,
+          "fear": 0.116,
+          "stress": 0.203,
+          "calm": 0.142,
+          "confusion": 0.085,
+          "surprise": 0.129,
+          "pain": 0.081,
+          "interest": 0.223,
+          "vulnerability": 0.078
+        }
+      }
+    }
+  },
+  "chosen": null,
+  "accepted": false,
+  "seconds": 34
+}

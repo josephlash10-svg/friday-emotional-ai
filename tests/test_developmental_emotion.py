@@ -30,6 +30,41 @@ class DevelopmentalTests(unittest.TestCase):
         result=sequence_checks(self.agent.development)
         self.assertTrue(all(result['checks'].values()),result)
 
+    def test_mixed_news_keeps_both_feelings(self):
+        # v35.1: a good side and a hard side read as one event cancel out; appraised as parts, both feelings rise.
+        joy,sadness=EMOTIONS.index('joy'),EMOTIONS.index('sadness')
+        good=OwnEvent(cue='conversation:understanding',relevance=.8,progress=.6,certainty=.8,control=.6,support=.3)
+        hard=OwnEvent(cue='conversation:understanding',relevance=.8,progress=-.6,certainty=.8,control=.3,support=.3)
+        whole=OwnEvent(cue='conversation:understanding',relevance=.8,progress=0.,certainty=.8,control=.45,support=.3)
+        alone=self.turn(whole).proposal
+        both=self.turn(whole,experience={'mixed':{'events':[good,hard]}})
+        self.assertGreater(both.proposal[joy],alone[joy]+.05)
+        self.assertGreater(both.proposal[sadness],alone[sadness]+.05)
+        self.assertEqual(len(both.development['mixed_parts']),2)
+        self.assertEqual(both.development['event']['progress'],0.)  # learning still sees the whole message
+
+    def test_a_subjects_learned_expectation_acts_through_the_appraisal(self):
+        # v35.2: a sore subject puts Friday on edge through the threat term, not through a nudge to the state.
+        module=copy.deepcopy(self.module);fear=EMOTIONS.index('fear')
+        news=OwnEvent(cue='subject:dad',relevance=.5,progress=0.,certainty=.6,control=.5,novelty=.2,support=.2)
+        before=module.appraise(news,self.needs,torch.full((len(EMOTIONS),),.025),regulate=False,depth=1)[0][fear]
+        for _ in range(8):module.expect('subject:dad',-.5)
+        self.assertLess(float(module.expected[module.cues.index('subject:dad')]),-.3)
+        after=module.appraise(news,self.needs,torch.full((len(EMOTIONS),),.025),regulate=False,depth=1)[0][fear]
+        self.assertGreater(float(after),float(before)+.01)
+        # Only the expectation learns: baseline mood and persistence move on real outcomes only.
+        self.assertTrue(torch.equal(module.baseline,self.module.baseline))
+        self.assertTrue(torch.equal(module.persistence,self.module.persistence))
+
+    def test_being_short_brings_guilt_through_the_appraisal(self):
+        # v35.2: "I was short with them" is appraised as a small loss Friday caused; guilt comes from the specification.
+        guilt=EMOTIONS.index('guilt')
+        ordinary=OwnEvent(cue='conversation:understanding',relevance=.15,certainty=.6,control=.6,novelty=.15)
+        unease=OwnEvent(cue='self:short-with-them',relevance=.5,progress=-.3,certainty=.6,control=.7,novelty=.1,effort=.2,agency=-.9)
+        alone=self.turn(ordinary).proposal
+        with_unease=self.turn(ordinary,experience={'self_events':[unease]}).proposal
+        self.assertGreater(float(with_unease[guilt]),float(alone[guilt])+.02)
+
     def test_own_relevance_not_emotional_words_and_no_implicit_growth(self):
         zero=self.agent.initial_state();event=OwnEvent()
         neutral=self.turn(event,text='hello')

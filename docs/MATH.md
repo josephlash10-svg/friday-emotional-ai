@@ -26,13 +26,34 @@ $$e = (\text{relevance},\ \text{progress},\ \text{certainty},\ \text{control},\ 
   **Since v35** the shipped appraisal heads read $h$ together with the MiniLM sentence vector $m$ (all-MiniLM-L6-v2, unit length,
   the model Friday already uses to recall memories by meaning):
 
-  $$h' = [\,h,\ 4m\,] \in \mathbb{R}^{960}, \qquad (960 \to 64 \to 9 \text{ and } 960 \to 64 \to 4,\ \text{sigmoid})$$
+  $$h' = [\,h,\ 4m\,] \in \mathbb{R}^{960}, \qquad (960 	o 64 	o 9 	ext{ and } 960 	o 64 	o 4,\ 	ext{sigmoid})$$
 
-  The factor 4 puts $m$ on roughly the scale of the layer-normalized $h$. With $h$ alone, sad news said casually ("i cried in the
-  supply closet") read as joy. These heads are trained from scratch on the same table plus a 28th category, casual sadness
-  (1,477 texts, `src/train_meaning_appraisal.py`), and must beat the earlier heads on the held-out natural messages and pass
-  every gate. They ship as `release/appraisal-heads.pth`, outside the checkpoint; without the file or the MiniLM model,
-  the checkpoint's own heads above are used.
+  The factor 4 does **not** put $m$ on the scale of $h$ (an earlier version of this page said it did; corrected after an outside
+  audit, 2026-11-04). Measured on ten messages: $\|h\| = 24.0 = \sqrt{576}$ with a mean square of 1.00 per coordinate, while
+  $\|4m\| = 4.0$ with a mean square of 0.042. So $4m$ is 6× smaller in norm and 24× smaller per coordinate. Across messages,
+  $h$ varies by only about 0.10 per coordinate, because most of its size is the same for every message. With $h$ alone, sad
+  news said casually ("i cried in the supply closet") read as joy. These heads are trained from scratch on 28 categories,
+  including casual sadness (`src/train_meaning_appraisal.py`). They ship as `release/appraisal-heads.pth`, outside the
+  checkpoint; without the file or the MiniLM model, the checkpoint's own heads above are used.
+
+  **Tried in v35.2, not shipped.** The heads were retrained with two more categories from the Moss live chat:
+  - **blame for a consequence Friday caused**, which these heads read as good news (progress +0.32, joy 0.11);
+  - **longer insults**, which read weakly (anger 0.03–0.06).
+
+  Three ways of combining the features were trained on identical data and seed: $4m$, $\sqrt{384}\,m$ (which matches the
+  scales), and a LayerNorm over $[h, m]$ (`semantic_interpreter.combined_features`; the mode is saved with the heads, and
+  heads saved without one are read as $4m$).
+
+  - **The first result:** $\sqrt{384}\,m$ passed every gate. Blame now read as a setback with guilt, and long insults raised
+    anger to 0.06–0.13.
+  - **What the regression found:** "She cheated on me. She deserves it." was answered with "a mix of relief and sadness". The
+    new heads read "She cheated on me" as slightly good news (progress +0.09; these heads give −0.49).
+  - **The new check:** 36 short news sentences, never trained on. The new heads misread 9 of them, against 5 for these heads.
+    Scaling MiniLM up makes the heads lean on it, and MiniLM places opposites ("rejected", "accepted") close together.
+  - **After teaching:** with that check as a gate and 20 short bad-news examples added, every variant still misread 6–7.
+
+  So v35.2 keeps these heads. The data, the gates (including *blame raises guilt* and the short-news polarity gate) and the
+  rejected run's record (`docs/meaning-appraisal-training-v35.2-rejected.json`) stay for the next attempt.
 
 Finally, the relevance is scaled by Friday's goal weights $g$: $e_{\text{rel}} \leftarrow e_{\text{rel}}\,(0.5 + 0.5\,g_{\text{goal}})$.
 
@@ -92,7 +113,7 @@ $$s_t = \rho\, s_{t-1} + (1-\rho)\,\mathrm{clip}(a_{\text{reg}} + 0.2\,b,\ 0, 1)
 $\pi$ is a learned per-emotion persistence and $b$ a learned baseline mood. Between messages, emotion relaxes toward a resting tone
 with a half-life that also depends on learned persistence:
 
-$$s(t) = r + (s - r)\,2^{-t/T},\qquad T = 60 + 240\,\pi \ \text{seconds},\qquad r = 0.025 + 0.2\,b$$
+$$s(t) = r + (s - r)\,2^{-t/T},\qquad T = 60 + 240\,\pi \ \text{seconds},\qquad r = \mathrm{clip}(0.025 + 0.2\,b,\ 0,\ 1)$$
 
 ## 3. Lifelong learning from outcomes
 When an outcome is observed (verbal feedback in conversation, or a measured outcome), Friday updates its memory for that cue
@@ -107,7 +128,8 @@ and persistence $\pi$ (toward 0.5 after safe successes, 0.78 after setbacks, rat
 
 ## 4. The V14 core: mood → attention → action (`model.py`)
 - **Mood vector.** The emotion state is projected onto 19 GloVe anchor words (*angry, sad, scared, happy, …*) and weighted toward the strongest emotions:
-  $m = \sum_i s_i^3\,A_i / \sum_i s_i^3$.
+  $m = \sum_i s_i^3\,A_i \,/\, \big(\sum_i s_i^3 + \epsilon\big)$ with $\epsilon = 10^{-8}$. The sum can't actually get near zero: every
+  channel rests at $r \ge 0.025$ (above), so $\sum_i s_i^3 \ge 19 \times 0.025^3 \approx 3\times10^{-4}$; the $\epsilon$ only guards the arithmetic.
 - **Affective attention.** Mood multiplicatively gates the token representations used for queries and keys (values are unchanged):
   $\tilde c = c \odot (1 + 0.3\tanh(W_g m))$, then multi-head attention and a feed-forward block.
 - **Fast associative memory.** A Hebbian outer-product memory with decay: $F_t = \mathrm{clip}_{\|\cdot\|\le 2}(0.9\,F_{t-1} + 0.05\,v k^\top)$.
@@ -118,6 +140,18 @@ $$\mu = \tfrac{1}{3.5}(1.2\,\text{stress} + 0.8\,\text{fear} + 1.5\,\text{pain})
 
 $$\pi(a) = \lambda\,\mathrm{softmax}(W_r\,\text{gut}) + (1-\lambda)\,\mathrm{softmax}(W_s\,\text{affect})$$
 
+  **On the real scale, the reflex never takes over.** The switch point $\mu = 0.75$ was set before the engine's real, quiet scale was known.
+  In the v35.1 live chat (74 exchanges, including a frost emergency and repeated insults), $\mu$ peaked at 0.20, so $\lambda$ never exceeded
+  0.0125 even with no deliberation: the deliberate policy always decides.
+
+  **Why it wasn't recalibrated in v35.2.** Over 640 real turns (the Moss chat and the v35.1.2 regression), $\mu$ had median 0.048, 97th
+  percentile 0.131, 99th 0.173 and maximum 0.261. Every turn above 0.15 was real distress (a crisis, abuse, a relapse, a frost
+  emergency). A pure rescale works: map $\mu$ onto the nominal scale with rest $\approx 0.03$ as 0 and 0.15 as the switch 0.75, and
+  keep the formula. But a probe showed that the reflex was never taught. It was trained while it had no say, so on a crisis, abuse,
+  a relapse or a dog's surgery it picks *answer* or *clarify*, where the deliberate policy picks *comfort* or *set boundary*. With
+  the rescale it would get 76–98% of the say on those turns. The switch stays at 0.75 until the reflex is trained on labeled
+  distress turns with the rescaled share in the loop (a change to the release checkpoint, with its own gates).
+
 - **Vitality.** A signed well-being estimate from need satisfaction, smoothed with decay 0.8.
 
 ## 5. From state to words
@@ -125,6 +159,74 @@ In the shipped CPU mode, replies are written by a local **Qwen3.5-4B** (llama.cp
 emotional state rendered as words ("mild curiosity, faint tension"), the appraisal, the two top action preferences from $\pi$, and verified
 memory facts. A rule-based reply monitor checks specific invariants (false memories, denying feelings it has, missed safety checks, promises it
 can't know, confusing who said what…). It regenerates or repairs a draft that fails.
+
+## 6. An emotional life over time (`emotional_life.py`, v35 and v35.1)
+All thresholds are on the engine's real, quiet scale: an insult moves a feeling by about 0.10.
+
+**Usual levels.** Each feeling has a usual level $u_i$, starting from fixed medians and following the record slowly, once per exchange:
+
+$$u_i \leftarrow u_i + 0.02\,(s_i - u_i)$$
+
+**Statistics about its own feelings.** A feeling *rises* in an exchange when $\Delta s_i \ge 0.04$ and it stands at least 0.02 above the median
+change of all 19 (the general lift at the start of a conversation is not a feeling). It is *up* while $s_i \ge 0.10$; a spell lasts from the
+first exchange it is up to the first one it isn't. Friday keeps the rises, peaks, spells and what was being talked about, and describes them
+when asked.
+
+**Feelings tied to subjects.** When a subject $k$ (a person, or a content word) comes up, a feeling $i$ is recorded for it if it rose, or if
+$s_i - u_i \ge 0.02$ (closeness and the engagement channels are left out: they rise with almost anything shared). A subject has a history once it
+came up at least twice before and one of its feelings peaked at $\ge 0.05$, or sat $\ge 0.02$ above usual on at least half of its mentions.
+That history shapes what the writer is told; what Friday *feels* when the subject comes back goes through the appraisal (since v35.2).
+
+**A subject's expectation (v35.2).** A subject that matters (one with a history, a person they've named, or one that has come up before)
+becomes the event's cue $k$. Its expected progress is learned after each turn from the progress the message was appraised to bring, at
+the same rate as outcomes (section 3), but without moving the baseline mood or persistence, which only real outcomes move:
+
+$$\hat p_k \leftarrow \hat p_k + \eta\,(e_{\text{prog}} - \hat p_k),\qquad \eta = \max\!\big(0.025,\ 0.15/\sqrt{1 + \text{visits}_k/20}\big)$$
+
+When the subject comes back, $\hat p_k$ enters the appraisal as it does for any cue. A negative expectation raises the threat term
+$0.55\max(0,-\hat p)$, so a sore subject puts Friday on edge (probe: fear 0.070 at $\hat p = 0$, 0.111 at $\hat p = -0.4$). News better
+than expected brings surprise through the prediction error $e_{\text{prog}} - \hat p$. This replaced, in v35.2, a direct addition of up to
+0.08 to the state. It builds more slowly: a subject needs several clearly hard mentions before the expectation moves the feelings much.
+
+**Mood changes behavior.** A feeling is notable when it is above a floor and either rose by 0.03 or is 1.5× the floor. The strongest
+notable mood, by value over floor, picks what Friday does: hurt (pain, sadness or shame at 0.08, when the message is aimed at Friday),
+irritated (anger 0.06), sad for them (0.08), tense (fear or stress 0.10), unsure (confusion 0.08), curious (0.10) or warm (0.15). Each sets a
+length scale (0.6–1.0), whether to ask questions, and whether humor fits.
+
+**Mixed feelings (v35.1).** The message is split into parts at "but", "though", "at the same time" and sentence ends. Questions, parts
+addressed to Friday, and remarks on its last reply are not news and are left out. Each part $p$ is appraised on its own ($e_p$). The
+message is mixed when the best and the worst part are far apart and the worst is a loss,
+
+$$\max_p e_{p,\text{prog}} - \min_p e_{p,\text{prog}} \ge 0.3, \qquad \min_p e_{p,\text{prog}} \le -0.05,$$
+
+unless the loss is a past difficulty followed by the outcome ("it was hard but worth it"). Saying it outright ("bittersweet", "happy and sad")
+counts too, with parts at progress $\pm 0.3$. The engine then keeps the stronger reaction for each feeling, before the depth blending:
+
+$$a = \max\big(a(e),\ a(e_{\text{good}}),\ a(e_{\text{hard}})\big) \quad \text{(per channel)}$$
+
+**Which part brings which feeling.** For each part, its feeling is the channel it raises most compared with the other part, among the
+channels that qualify (closeness and the engagement channels left out):
+
+$$\mathcal{I}_p = \{\, i : a_i(e_p) - a_i(e_{\bar p}) \ge 0.008,\ \ a_i(e_p) \ge u_i \,\}, \qquad
+k^*(p) = \begin{cases} \arg\max_{i \in \mathcal{I}_p} \big(a_i(e_p) - a_i(e_{\bar p})\big) & \mathcal{I}_p \ne \varnothing \\ \varnothing & \mathcal{I}_p = \varnothing \end{cases}$$
+
+When no channel qualifies, no feeling is named for that part (there is no fallback channel). A subject keeps the feeling of its own part;
+people named anywhere in the message get all of them.
+
+**Feelings about its own feelings (v35.1).** Within an hour after a short or guarded reply (the irritated or hurt mood), and unless the new
+message is another jab, "I was short with them" is appraised as its own event next to the message (since v35.2):
+
+$$e_{\text{short}} = (\text{relevance } 0.5,\ \text{progress } {-0.3},\ \text{certainty } 0.6,\ \text{control } 0.7,\ \text{agency } {-0.9},\ \text{effort } 0.2,\ \text{novelty } 0.1)$$
+
+a small loss that Friday caused and can repair. It joins the message's appraisal the way the parts of mixed news do (the stronger reaction
+per channel), so the guilt comes from section 2's specification, $\ell\,\max(0,-e_{\text{agency}})$: on the release engine, guilt 0.060
+after a short reply against 0.009 after a warm one, with some sadness and tension. Until v35.2 this was a direct edit of the state
+(guilt $+0.04$, feeling exposed $+0.02$).
+
+**Downplaying, with timing (v35.1).** Friday's own hard feeling is the largest of pain, shame, anger and feeling exposed above its usual
+level, $o = \max_i (s_i - u_i)$. It is noticed at $o \ge 0.02$ and too strong to downplay at $o \ge 0.10$. While the other person's need
+comes first, a noticed but not strong feeling is kept small (or out of the reply) and remembered; it may be said honestly once, when
+things are calm and they ask, or after three exchanges, within three days.
 
 ## Limits
 The appraisal specification and training targets are hand-designed. The text→appraisal heads are tiny and read two small frozen encoders

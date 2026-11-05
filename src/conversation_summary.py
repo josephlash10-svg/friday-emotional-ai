@@ -1,0 +1,101 @@
+"""What Friday keeps in view when a long conversation no longer fits the context window (v35.1 live chat).
+
+The writer sees a fixed number of tokens. In the live chat with Moss (an AI that runs an orchard's frost fans and hives)
+Friday's notes grew until only 2-4 of about 40 messages were left in view: it said it had been "processing data on the
+hives" (Moss's job) and contradicted itself within minutes. Two small, fixed-size facts now go with every reply, built from
+what was actually said, with no extra language-model call:
+
+  who_is_who                      what they said about themselves (name, what they are, what they can and can't do), and
+                                  that their job, body and tools are theirs, not Friday's
+  earlier_in_this_conversation    the few earlier exchanges that matter most once they are out of view: things said to
+                                  Friday, advice and plans Friday gave, decisions they made, numbers, at most six
+Everything else said earlier stays in the record, where recall by meaning finds it when it comes up.
+"""
+import re
+
+# What they are and what they can or can't do; feelings ("i'm tired", "i'm nervous") are not who someone is.
+SELF_DESCRIPTION = re.compile(r"(?i)(?:^|(?<=[.!?,;])\s*|\bbut\s+|\band\s+)((?:i'?m|i am|i run|i have|i don'?t have|i do not have|i can'?t|i cannot|"
+                              r"i work|i live|my name is|my job is|my jobs are|i manage|i control|i'm not|i am not)\b[^.!?;]{3,110})")
+FEELING_AFTER_IM = re.compile(r"(?i)^(?:i'?m|i am)\s+(?:so |really |just |kind of |kinda |a (?:little|bit) |pretty |very |not |still )*"
+                              r"(?:tired|nervous|fine|okay|ok|good|sorry|glad|happy|sad|scared|worried|excited|angry|mad|upset|confused|"
+                              r"testing|kidding|joking|serious|going|gonna|thinking|guessing|asking|telling|trying|not switching|done|back|here|wiped)\b")
+WHO_LIMIT, WHO_CHARS = 6, 110
+EARLIER_LIMIT, EARLIER_CHARS = 6, 120
+
+ADVICE = re.compile(r"(?i)\b(?:you should|you could|try|keep|turn (?:off|on)|run|cut|tell them|don'?t tell|maybe|i'?d|the plan|step)\b")
+DECISION = re.compile(r"(?i)\b(?:i'?m going to|i'?ll|i will|i decided|i'm not going to|the plan is|i'?m telling)\b")
+
+
+def who_is_who(user_texts, name=None):
+    """{'them': [...], 'you': '...'} from what they said about themselves, the most recent distinct statements in order."""
+    found = []
+    for text in user_texts:
+        for match in SELF_DESCRIPTION.finditer((text or '').replace('’', "'")):
+            said = match.group(1).strip(' ,')
+            if FEELING_AFTER_IM.search(said):
+                continue
+            key = said.lower()[:50]
+            found = [f for f in found if f.lower()[:50] != key] + [said[:WHO_CHARS]]
+    if not found:
+        return None
+    return {'them': f'{name or "they"} said about themselves: ' + ' | '.join(found[-WHO_LIMIT:]),
+            'you': ('you are Friday, running on this computer: no body or hands, and no jobs or tools beyond this conversation. '
+                    'What they described above is theirs, not yours')}
+
+
+OTHERS_LIMIT, OTHERS_CHARS = 4, 100
+NOT_NAMES = set('''I I'm I'll I've I'd Friday Monday Tuesday Wednesday Thursday Saturday Sunday January February March April May June July
+August September October November December AI OK Ok Okay TV US UK'''.split())
+
+
+# Capitalized words that start sentences without being names.
+STARTERS = set('''The This That These Those It He She They We You My Our Your His Her Their And But So Yes No Hi Hey Hello Thanks Thank
+What When Where Why How Who Which If Then Also Just Well Oh Wait Sorry Good Great Fine Sure Not One Two Three Today Tomorrow Yesterday
+Last Next Every All Some Maybe Please Let Can Could Would Should Do Does Did Is Are Was Were Have Has Had There Here In On At For With
+From To As Because After Before Anyway Honestly Ha Haha Lol Ugh Wow Right Nope Yeah Yep Still Even Only Now Never Always Again Plus'''.split())
+
+
+def names_in(user_texts, skip=()):
+    """Capitalized words that are probably names: "Priya saw the logs", "Dev's buying them", "but Ruth looked at it"."""
+    found = []
+    skipped = {s.lower() for s in skip}
+    for text in user_texts:
+        for match in re.finditer(r"(?<![\w'])([A-Z][a-z]{1,15})(?:'s)?\b", (text or '').replace('’', "'")):
+            name = match.group(1)
+            if name not in NOT_NAMES and name not in STARTERS and name.lower() not in skipped and name not in found:
+                found.append(name)
+    return found
+
+
+def other_people(user_texts, names):
+    """The latest thing said about each person they mention, so "Dev's buying them now" stays Dev's (v35.1.2: "You buy four
+    strips from Dev"; "you're trusting me more" for what Priya said). At most four people, newest mention each."""
+    latest = {}
+    for text in user_texts:
+        for sentence in re.split(r'(?<=[.!?])\s+', (text or '').replace('’', "'")):
+            for name in names:
+                if re.search(r'(?i)(?<!\w)' + re.escape(name) + r"(?:'s)?(?!\w)", sentence):
+                    latest.pop(name, None)
+                    latest[name] = sentence.strip()[:OTHERS_CHARS]
+    rows = list(latest.items())[-OTHERS_LIMIT:]
+    return [f'{name}: {said}' for name, said in rows] or None
+
+
+def earlier_in_this_conversation(trimmed, at_friday=None):
+    """The few earlier exchanges that matter most once they are out of view, oldest first. trimmed: history rows
+    ({'role', 'content'}) no longer shown. Fixed size, so it never grows with the conversation."""
+    scored = []
+    for i, row in enumerate(trimmed):
+        text = (row.get('content') or '').strip()
+        if not text:
+            continue
+        if row['role'] == 'user':
+            score = 2 * bool(at_friday and at_friday.search(text)) + bool(DECISION.search(text)) + bool(re.search(r'\d', text))
+            who = 'they'
+        else:
+            score = 2 * bool(ADVICE.search(text))
+            who = 'you'
+        if score:
+            scored.append((score, i, f'{who}: {text[:EARLIER_CHARS]}'))
+    kept = sorted(sorted(scored, key=lambda r: (-r[0], -r[1]))[:EARLIER_LIMIT], key=lambda r: r[1])
+    return [line for _, _, line in kept] or None

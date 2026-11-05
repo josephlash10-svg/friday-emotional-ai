@@ -214,7 +214,23 @@ class ExperienceModel:
         return len(content_words(text))>=minimum
 
     # --- Emotional life over time (v35): statistics (#22) and feelings tied to topics (#20) ------------------------------
-    def _note_feelings(self,text,before,after,said):
+    def _note_self_feeling(self,prepared,response,now):
+        """v35.1: the mood of this reply (for feeling uneasy about it next turn), and a feeling kept small for later."""
+        own=self.data.setdefault('self_feeling',{})
+        own['last_mood']={'mood':prepared.get('mood_this_turn'),'utc':time_sense.stamp(now)}
+        if prepared.get('mood_this_turn') in emotional_life.SHORT_MOODS:own['last_short']=dict(own['last_mood'])
+        held=own.get('held_back')
+        if held and prepared.get('honest_later_offered') and re.search(
+                r'(?i)\b(?:earlier|before|back there|when you said|honestly|to be honest)\b|'+re.escape(held['word'].split()[-1]),response or ''):
+            own['held_back']=None  # said honestly, once
+        elif held and now-time_sense.parse(held['utc'])>emotional_life.HOLD_EXPIRES:
+            own['held_back']=None
+        elif held and prepared.get('honest_later_offered'):
+            own['held_back']=dict(held,offered=True)
+        if prepared.get('held_back_now'):
+            own['held_back']=dict(prepared['held_back_now'],utc=time_sense.stamp(now),exchange=self.data['stats']['interactions'])
+
+    def _note_feelings(self,text,before,after,said,causes=None):
         people=self.data.get('people',{})
         stats=self.data.setdefault('emotion_stats',emotional_life.new_stats())
         usual=dict(stats.get('usual') or emotional_life.USUAL)  # the usual levels before this exchange moved them
@@ -226,7 +242,7 @@ class ExperienceModel:
         if named:self._last_person=(named[-1],said)
         elif last and said-last[1]<=3600 and re.search(r'(?i)\b(?:he|him|his|she|her|hers)\b',text):text=text+' '+last[0]
         emotional_life.update_stats(stats,before,after,text,said,people)
-        emotional_life.update_topic_feelings(self.data.setdefault('topic_feelings',{}),before,after,text,said,people,usual=usual)
+        emotional_life.update_topic_feelings(self.data.setdefault('topic_feelings',{}),before,after,text,said,people,usual=usual,causes=causes)
 
     def _backfill_emotional_life(self):
         """Memories saved before v35: rebuild the statistics and topic feelings from the stored exchanges."""
@@ -491,6 +507,11 @@ class ExperienceModel:
             if scope=='external_fact':event=replace(event,progress=0.,safety=0.,agency=0.)
         goal='continuity' if scope=='relationship' else 'understanding' if kind=='correction' else 'usefulness'
         event=replace(event,relevance=event.relevance*(.5+.5*self.data['goals'][goal]))
+        # v35.1: news with two feelings in it. Each side is appraised too, scaled like the whole (mixed_feelings.py).
+        mixed=proposed.get('_mixed') if isinstance(proposed,dict) and inference is not None and kind not in ('correction','feedback') and scope!='external_fact' else None
+        if mixed:
+            scale=.5+.5*self.data['goals'][goal]
+            mixed=dict(mixed,events=[replace(OwnEvent(cue=event.cue,**part),relevance=part['relevance']*scale) for part in mixed['events']])
         if applicable and kind=='correction':
             event=replace(event,certainty=max(event.certainty,.85),novelty=.15,support=max(event.support,.5))
         if frame.get('scope_uncertain'): event=replace(event,certainty=min(event.certainty,.55))
@@ -498,7 +519,7 @@ class ExperienceModel:
         levels[0]=.35 if kind=='correction' and scope=='answer' else .5
         levels[1]=.35 if frame['confidence']<.65 else .5
         applied=[v['id'] for v in applicable]
-        return {'frame':frame,'event':event,'feedback':feedback,'levels':levels,
+        return {'frame':frame,'event':event,'mixed':mixed,'feedback':feedback,'levels':levels,
                 'applied_lessons':applied,'context':self.context(frame,query_vector),'depth':self.depth,'query_vector':query_vector,
                 'semantic_key':proposed.get('_semantic_key') if isinstance(proposed,dict) else None,
                 'semantic_class':proposed.get('_semantic_class') if isinstance(proposed,dict) else None}
@@ -554,7 +575,9 @@ class ExperienceModel:
                  'before':before,'after':after,'development':turn.development,'feedback_used':False}
         self.data['episodes'].append(episode);self.data['episodes']=self.data['episodes'][-self.capacity:]
         self._note_conversation(episode,now);self._note_events(text,now);self._note_people(text,now)
-        self._note_feelings(text,before,after,now)
+        mixed=prepared.get('mixed');proposals=(turn.development or {}).get('mixed_proposals')
+        self._note_feelings(text,before,after,now,causes=emotional_life.causes(mixed,proposals,names) if mixed and proposals else None)
+        self._note_self_feeling(prepared,response,now)
         if self.meaning_enabled and self._worth_indexing(text):
             # After the reply is on screen: about 10 ms, while the checkpoint is being saved anyway.
             self._sync_vectors()
@@ -582,7 +605,9 @@ class ExperienceModel:
                 return f'Nice to meet you, {shown}.'
             if current['kind']=='relationship' and self.data['relationship']['source']=='user_description':
                 return 'That’s how I’ll understand our relationship: '+self.data['relationship']['description']+'. We can revisit that understanding as our shared experience develops.'
-        if current and current.get('scope_uncertain') and current['kind']=='correction':
+        # v35.1 live chat: three longer messages that pointed out a contradiction, or started with "no.", got this line in 2 s
+        # instead of a reply. It is for a bare correction only; anything that says what is wrong goes to the writer.
+        if current and current.get('scope_uncertain') and current['kind']=='correction' and len(text.split())<=8:
             return 'I can see that you’re correcting something, but I’m not yet sure which interpretation to change. Could you clarify the part you want me to revisit?'
         if re.search(r'\bhow\b.*\b(?:you use|you learn|use|learn from)\b.*\b(?:corrections?|feedback)\b',query):
             return 'When you correct me, I keep that feedback attached to the exchange it concerns. In a similar situation, I can retrieve the lesson and revise my expectations and appraisal. If I’m unsure what you’re correcting, I ask rather than assume. That learning survives saving and restarting; it does not guarantee that every future interpretation will be right.'

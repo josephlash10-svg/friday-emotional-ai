@@ -81,12 +81,19 @@ class DevelopmentalEmotion(nn.Module):
         decay=torch.exp(-math.log(2)*min(elapsed_seconds,2592000)/half_life)
         return rest_target+(previous-rest_target)*decay
 
-    def appraise(self,event,needs,previous,deliberation=0.,regulate=True,elapsed_seconds=0.,depth=None):
+    def appraise(self,event,needs,previous,deliberation=0.,regulate=True,elapsed_seconds=0.,depth=None,parts=None):
         previous=self.recovered_emotion(previous,elapsed_seconds)
         x=self.features(event,needs)
-        raw=self.appraiser(x).sigmoid()
-        # Zero personal relevance has a fixed low appraisal irrespective of words.
-        proposal=(1-event.relevance)*raw.new_full(raw.shape,.025)+event.relevance*raw
+        def propose(e,features):
+            raw=self.appraiser(features).sigmoid()
+            # Zero personal relevance has a fixed low appraisal irrespective of words.
+            return (1-e.relevance)*raw.new_full(raw.shape,.025)+e.relevance*raw
+        proposal=propose(event,x)
+        # v35.1 mixed feelings: news with a good side and a hard side. Each side is appraised too and the stronger reaction
+        # for each feeling is kept, so joy and sadness can both rise instead of cancelling out in one reading.
+        part_proposals=[propose(part,self.features(part,needs)) for part in parts or ()]
+        for part_proposal in part_proposals:
+            proposal=torch.maximum(proposal,part_proposal)
         if depth is not None:
             if not 0<=depth<=1: raise ValueError('Emotional depth must be in [0,1]')
             coarse=proposal.clone()
@@ -131,6 +138,9 @@ class DevelopmentalEmotion(nn.Module):
         details['elapsed_seconds']=elapsed_seconds
         details['emotional_depth']=depth
         details['carryover_arousal_check']=carryover_check
+        if parts:
+            details['mixed_parts']=[asdict(part) for part in parts]
+            details['mixed_proposals']=[p.detach().tolist() for p in part_proposals]  # which part brings which feeling
         return regulated,emotion,selected_deliberation,details
 
     @torch.no_grad()
@@ -161,6 +171,23 @@ class DevelopmentalEmotion(nn.Module):
         recovery=.5 if safe and outcome>0 else .78 if outcome<0 else .65
         self.persistence.lerp_(self.persistence.new_full(self.persistence.shape,recovery),.02)
         self.persistence.clamp_(.35,.85)
+
+    @torch.no_grad()
+    def expect(self,cue,progress):
+        """Learn what a kind of event usually brings: the cue's expected progress moves toward the appraised progress, at the
+        same rate as outcomes (section 3 of docs/MATH.md). Only the expectation changes; baseline mood, persistence and
+        strategy values move only on real outcomes (observe). v35.2: this is how a subject with a history puts Friday on edge,
+        through the appraisal's threat term, instead of a number added to the state."""
+        if not isinstance(progress,(int,float)) or not math.isfinite(progress): raise ValueError('Invalid expected progress')
+        if cue not in self.cues:
+            if len(self.cues)<self.capacity: self.cues.append(cue)
+            else:
+                index=int(self.visits.argmin());self.cues[index]=cue
+                self.expected[index]=0;self.learned_control[index]=.5;self.visits[index]=0
+        index=self.cues.index(cue)
+        rate=max(.025,.15/math.sqrt(1+self.visits[index].item()/20))
+        self.expected[index].lerp_(self.expected.new_tensor(max(-1.,min(1.,progress))),rate)
+        self.visits[index]+=1
 
     def outcome_emotion(self,details,previous,needs,quality,safe=False,control=None):
         event=OwnEvent(**details['event'])

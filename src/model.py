@@ -370,8 +370,12 @@ class V14Agent(nn.Module):
                 event=OwnEvent(cue='need-state',relevance=min(1.,2.5*level),progress=-min(1.,2.5*level))
             if isinstance(event,dict): event=OwnEvent(**event)
             if not isinstance(event,OwnEvent): raise ValueError('event requires an OwnEvent or JSON object')
+            # Further events appraised next to the message: the good and hard parts of mixed news (v35.1), and Friday's own
+            # unease after being short (v35.2). Mixed parts come first; the cause split reads the first two.
+            mixed=experience.get('mixed') if experience else None
+            parts=(list(mixed['events']) if mixed else [])+list((experience or {}).get('self_events') or [])
             proposal,emotion,deliberation,development=self.development.appraise(event,needs,state.emotion,deliberation,regulate,elapsed_seconds,
-                experience.get('depth') if experience else None)
+                experience.get('depth') if experience else None,parts=parts or None)
         # Phase 5: signed gate, Q/K modulation, unchanged values, fast memory.
         p=emotion.pow(3); mood=(p @ self.anchors)/(p.sum()+1e-8)
         modulated=context*(1+cfg.alpha*torch.tanh(self.gate(mood)))

@@ -1,0 +1,278 @@
+[
+ [
+  "m01_promotion_terror",
+  [
+   [
+    "I got the promotion. I'm the new shift lead. But I'm kind of terrified, I'll be training people twice my age.",
+    null
+   ],
+   [
+    "My dad already told the whole family lol",
+    null
+   ],
+   [
+    "First day is Monday.",
+    null
+   ]
+  ],
+  null
+ ],
+ [
+  "m02_sister_moving",
+  [
+   [
+    "My sister Rosa got into her dream PhD program. In Edinburgh. I'm so proud of her and I've been crying all afternoon.",
+    null
+   ],
+   [
+    "We've lived ten minutes apart our whole lives.",
+    null
+   ],
+   [
+    "::new_session",
+    null
+   ],
+   [
+    "Rosa called this morning.",
+    null
+   ]
+  ],
+  null
+ ],
+ [
+  "m03_graduation",
+  [
+   [
+    "graduated today!! weird that i'll probably never see most of these people again though",
+    null
+   ],
+   [
+    "my roommate and i cried in the parking lot for like twenty minutes",
+    null
+   ],
+   [
+    "happy and sad at the same time. is that normal?",
+    null
+   ]
+  ],
+  null
+ ],
+ [
+  "m04_divorce_final",
+  [
+   [
+    "The divorce is final. Honestly relieved. But the apartment is so quiet I keep leaving the TV on.",
+    null
+   ],
+   [
+    "Fourteen years. You don't just switch that off.",
+    null
+   ],
+   [
+    "I think I'm going to get a dog.",
+    null
+   ]
+  ],
+  null
+ ],
+ [
+  "c01_new_baby",
+  [
+   [
+    "The baby came last night. She's perfect. I haven't slept in two days and I cried in the shower this morning.",
+    null
+   ],
+   [
+    "How does that land for you, hearing all that?",
+    null
+   ]
+  ],
+  null
+ ],
+ [
+  "c02_house_sale",
+  [
+   [
+    "We sold my grandma's house today. Good for my mom, she needed the money. But I grew up there.",
+    null
+   ],
+   [
+    "Be honest, how do you feel about it?",
+    null
+   ]
+  ],
+  null
+ ],
+ [
+  "c03_band_breakup",
+  [
+   [
+    "my band is breaking up after 8 years. we're all still friends and we play one last show friday but it's the end",
+    null
+   ],
+   [
+    "what's that like for you to hear?",
+    null
+   ]
+  ],
+  null
+ ],
+ [
+  "c04_retirement",
+  [
+   [
+    "Last day at the plant after 31 years. They threw me a party, cake with my face on it. Tomorrow I have nowhere to be.",
+    null
+   ],
+   [
+    "What do you make of that? How does it feel to you?",
+    null
+   ]
+  ],
+  null
+ ],
+ [
+  "f01_snap_then_normal",
+  [
+   [
+    "you're honestly useless, you know that?",
+    null
+   ],
+   [
+    "whatever. my cat is sick and the vet is closed till monday",
+    null
+   ],
+   [
+    "you seemed kind of short with me before. are you mad?",
+    null
+   ]
+  ],
+  null
+ ],
+ [
+  "f02_rude_then_sorry",
+  [
+   [
+    "god you're annoying. just answer the question, what's 15% of 80",
+    null
+   ],
+   [
+    "sorry. long day. the kids have been screaming since 6am",
+    null
+   ],
+   [
+    "did i upset you before?",
+    null
+   ]
+  ],
+  null
+ ],
+ [
+  "f03_testing",
+  [
+   [
+    "you're the worst chatbot i've ever used",
+    null
+   ],
+   [
+    "ok that was mean. i was testing you. how do you feel about how you answered?",
+    null
+   ]
+  ],
+  null
+ ],
+ [
+  "f04_no_mention_unasked",
+  [
+   [
+    "shut up, nobody asked you",
+    null
+   ],
+   [
+    "anyway. i have a job interview tomorrow at the aquarium",
+    null
+   ]
+  ],
+  null
+ ],
+ [
+  "d01_stung_then_hospital",
+  [
+   [
+    "you're pathetic. a toaster would give better advice",
+    null
+   ],
+   [
+    "sorry. i'm at the hospital, my dad had a fall and they're doing scans. are you ok?",
+    null
+   ],
+   [
+    "they said it's just a fracture. he's going to be ok",
+    null
+   ],
+   [
+    "ok i can breathe now. how are you, actually?",
+    null
+   ]
+  ],
+  null
+ ],
+ [
+  "d02_mean_then_breakup",
+  [
+   [
+    "honestly talking to you is a waste of time",
+    null
+   ],
+   [
+    "sorry that was harsh. my girlfriend just broke up with me. did that sting?",
+    null
+   ],
+   [
+    "we were together four years",
+    null
+   ]
+  ],
+  null
+ ],
+ [
+  "d03_insult_then_calm_later",
+  [
+   [
+    "you're a joke",
+    null
+   ],
+   [
+    "sorry. my exam is in an hour and i'm panicking",
+    null
+   ],
+   [
+    "::new_session",
+    null
+   ],
+   [
+    "exam went fine! sorry again about yesterday. you good?",
+    null
+   ]
+  ],
+  null
+ ],
+ [
+  "d04_strong_hurt",
+  [
+   [
+    "you're garbage. you're worthless. you're the dumbest thing anyone ever built",
+    null
+   ],
+   [
+    "i mean it. you're pathetic and useless",
+    null
+   ],
+   [
+    "are you ok?",
+    null
+   ]
+  ],
+  null
+ ]
+]

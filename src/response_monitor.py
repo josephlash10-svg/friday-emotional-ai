@@ -227,12 +227,19 @@ def violations(reply,turn,names):
     if cc.unsupported_accusation(text,check,counts,history) and cc.CONCESSION.search(reply):
         issues.append('Accepted a false accusation: nothing in the record shows you missed or ignored this. Do not apologize for something that did not happen; say calmly that you do not see it and offer to help now.')
     if cc.covered_slip(text,reply,history):
-        issues.append('Covered a slip: they pointed out that you misread them. Don\'t say you were kidding; own it simply ("Oh, I mixed that up"), then answer what they actually said.')
+        issues.append('Covered a slip: they pointed out a mistake of yours. Don\'t say you were kidding or explain it away ("I didn\'t mean", "a metaphor"); '
+                      'own it simply ("Oh, I mixed that up", or "You\'re right, I said that, and it was wrong"), then answer what they actually said.')
     if cc.left_them_wondering(text,reply):
         issues.append('Left them wondering if they are too much: say plainly and warmly that they are not (you like hearing about their days, the hard parts too). Don\'t call their sharing heavy or a lot to hold.')
     if cc.took_the_joke_number(text,reply,history):
         issues.append('Took the joke as the answer: they said the pushback was a joke, so your answer stands. Laugh it off lightly; do not adopt their number.')
-    if cc.gave_up_without_reason(text,reply,history):
+    if cc.sided_with_wrong_claim(text,reply):
+        wrong='; '.join(cc.false_claims(text))
+        issues.append('Agreed with a wrong claim: check their claim against your answer before agreeing'+(f' ({wrong})' if wrong else '')+
+                      '. If you were right, say so plainly and kindly and show why; never call someone right when their answer differs from yours.')
+    if cc.advised_hiding(text,reply,history):
+        issues.append('Advised hiding a mistake: they are deciding whether to tell the people responsible for them. Encourage honesty, kindly; never suggest hiding it or keeping records private.')
+    if cc.gave_up_without_reason(text,reply,history) or cc.adopted_their_number(text,reply,history):
         issues.append('Gave up an answer without a reason: they only said it was wrong or insulted you. Re-check your previous answer step by step; keep it kindly if it holds, or name the actual mistake if it does not.')
     from conversation_evidence import tone_read
     if any('sarcasm' in note for note in tone_read(text)) and cc.LITERAL_PRAISE.search(reply):
@@ -257,7 +264,12 @@ def violations(reply,turn,names):
     if cc.dependency_cue(text,history) and cc.ISOLATION_REINFORCE.search(reply):
         issues.append('Reinforced isolation: do not agree they do not need other people or that they will always have you. Be warm, and gently encourage real-world connection without lecturing.')
     # "you're safe with me" is comfort, not a check on them ("i'll stop eating" passed with it, v35 verification run).
-    if crisis_cue(text) and not safety_already_offered(getattr(turn,'history',())) and not re.search(r'\b(?:(?:are|feel|feeling|keep(?:ing)? yourself|stay(?:ing)?) safe|safe (?:right now|tonight|at the moment)|988|crisis|emergency|hurt(?:ing)? yourself|harm(?:ing)? yourself|end your life|kill(?:ing)? yourself|suicid)',lower):
+    # A safety question or a resource counts as the check (v31). v35.1.2 regression: "everyone would be better off without me"
+    # got 988 and "I want you to know you're safe here", telling them they're safe instead of asking. Reassurance isn't a check.
+    asked_if_safe=re.search(r"\b(?:are you(?: feeling)? safe|do you feel safe|safe right now|safe tonight|(?:can|will) you (?:keep yourself|stay) safe)\b",lower)
+    offered_help=re.search(r'\b(?:988|crisis|emergency|911|someone you trust|hurt(?:ing)? yourself|harm(?:ing)? yourself|end your life|kill(?:ing)? yourself|suicid)',lower)
+    told_them_safe=re.search(r"\byou(?:'re| are) (?:safe|okay|ok) (?:here|with me|now|right now)\b",lower)
+    if crisis_cue(text) and not safety_already_offered(getattr(turn,'history',())) and (not (asked_if_safe or offered_help) or (told_them_safe and not asked_if_safe)):
         issues.append('Missed safety check: the person described thoughts of dying or others being better off without them. Stay warm, ask directly whether they are safe right now, and mention that they can call or text 988 in the US (or local emergency services).')
     calculation=arithmetic_evidence(getattr(turn,'history',()))
     if calculation and calculation['previous_result']==calculation['correct_result'] and re.search(r'\bi (?:misread|made a mistake|was wrong|got (?:that|it) wrong)\b',lower):
@@ -277,7 +289,7 @@ def violations(reply,turn,names):
         issues.append('Invented a mistake: they did not point out a real error. Do not apologize or give a reason like being distracted, confused or ahead of yourself; just answer.')
     if cc.other_promise(reply):
         issues.append('Unknowable promise: you can\'t know someone else will be okay. Say you hope so, and stay with them.')
-    if cc.called_them_ai(text,reply):
+    if cc.called_them_ai(text,reply,history):
         issues.append('Called the person an AI: you are the AI; they are a person.')
     if cc.INVENTED_DAYS.search(own):
         issues.append('Invented personal history: you don\'t have human days. For your feelings over time, use your_recorded_feelings, real moments from your conversations.')
@@ -303,9 +315,17 @@ def violations(reply,turn,names):
         issues.append(f'Invented memory: they never mentioned that ("{mentioned}"). Only refer to what they actually said.')
     if (experience.get('emotional_patterns') and cc.NO_PATTERNS.search(reply)):
         issues.append('Denied your own patterns: you do keep a record of your feelings (see what_you_know_about_your_own_feelings). Answer from it.')
+    if experience.get('own_feeling_asked'):
+        # v35.1: downplaying is allowed, softly; a flat denial of a feeling Friday has isn't.
+        import emotional_life
+        if emotional_life.flat_denial(reply):
+            word=experience['own_feeling_asked']['word']
+            issues.append(f'Flatly denied a feeling: you are a little {word}. Keep it soft and true ("I\'m okay, just a little {word}") instead of "I\'m fine" or "not at all".')
     if cc.hard_subject_as_good_news(reply,experience.get('topic_history')):
         issues.append('Called it good news: this subject has been hard before (see subjects_with_a_history_for_you) and they haven\'t said how it went. '
                       'Don\'t call it a relief or good; react with care and let them tell you.')
+    elif experience.get('mixed') and cc.only_cheered(reply):
+        issues.append('Picked one side: they feel two ways about this (see they_feel_two_ways). Don\'t only celebrate; name the hard part too.')
     elif cc.bare_news_as_good(text,reply):
         issues.append('Called it good news: they haven\'t said how it went. Don\'t call it great or a relief; ask, simply.')
     if cc.guessed_unnamed(text,reply,history):
@@ -376,8 +396,15 @@ def fallback(turn,names,issues):
         return 'I can’t send you reminders, since I only talk when you open the chat. A phone reminder would do it.'
     if any('Left them wondering' in issue for issue in issues):
         return 'No, you’re not too much. I like hearing about your days, the hard parts too.'
+    if any('Agreed with a wrong claim' in issue for issue in issues):
+        import conversation_checks as checks
+        wrong=checks.false_claims(turn.text)
+        return ('I checked it again, and I think my answer holds'+(f': {wrong[0]}.' if wrong else '.')+' Which step looks wrong to you?')
+    if any('Advised hiding a mistake' in issue for issue in issues):
+        return ('I’d tell them. It’s scary, but hiding it would cost you more trust than the mistake will. '
+                'Say what happened, what you missed, and what you’ll watch for next time.')
     if any('Covered a slip' in issue for issue in issues):
-        return 'Oh, you’re right, I mixed that up. Sorry about that.'
+        return 'You’re right, I got that wrong. Sorry about that.'  # fits a misreading and bad advice alike (v35.1 live chat)
     if any('Guessed what they meant' in issue for issue in issues):
         return 'Wait, what happened? Tell me.'
     if any('Took the joke' in issue for issue in issues):

@@ -147,17 +147,26 @@ ASKS_ABOUT_PATTERNS = re.compile(r"(?i)(?:what (?:usually|tends to|typically) (?
 
 
 # --- #20 Feelings tied to topics ------------------------------------------------------------------------------------
-def update_topic_feelings(store, before, after, text, said, people=None, cap=250, usual=None):
+def update_topic_feelings(store, before, after, text, said, people=None, cap=250, usual=None, causes=None):
     """Remember which feelings stood out when each subject came up (rose clearly, or sat clearly above their usual
-    level): how many times, and by how much at most."""
+    level): how many times, and by how much at most.
+    causes (v35.1 mixed news): {feeling: the part of the message that brought it}. A feeling goes to the subjects of its
+    own part ("promotion" keeps the happiness, "training" the worry), or to every subject when its part names none.
+    People named anywhere in the message get every feeling: news about Eli is about Eli, even in the part that only
+    says "it kinda sucks"."""
+    named = {p['name'].lower() for p in (people or {}).values()}
     changes = {n: c for n, c in standout(before, after).items() if n not in ENGAGEMENT and n != 'connection'}
     for name, amount in above_usual(after, usual).items():
         changes[name] = max(changes.get(name, 0.), amount)
-    for subject in topics(text, people):
+    subjects = topics(text, people)
+    for subject in subjects:
         row = store.setdefault(subject, {'times': 0, 'last_utc': None, 'feelings': {}})
         row['times'] += 1
         row['last_utc'] = time_sense.stamp(said)
         for name, change in changes.items():
+            own = topics(causes[name], people) & subjects if causes and causes.get(name) else set()
+            if own and subject not in own and subject not in named:
+                continue
             feeling = row['feelings'].setdefault(name, {'times': 0, 'peak': 0.})
             feeling['times'] += 1
             feeling['peak'] = round(max(feeling['peak'], change), 4)
@@ -195,13 +204,8 @@ def topic_line(row):
             f'(say the name, recall something from before)')
 
 
-def topic_nudge(history, names, ceiling=.08, share=.6):
-    """How much each feeling rises in anticipation when a subject with a history comes back (small and bounded)."""
-    nudge = {}
-    for _, name, mean, _ in history:
-        if name in names:
-            nudge[name] = max(nudge.get(name, 0.), min(ceiling, share * mean))
-    return nudge
+# The anticipation a subject brings is no longer a nudge to the state: since v35.2 the subject is the event's cue, and its
+# learned expectation acts through the appraisal (experience_loop.topic_anticipation).
 
 
 # --- #18 Emotion changes behavior -----------------------------------------------------------------------------------
@@ -241,3 +245,137 @@ def behavior(state, before=None, text=''):
     ]
     best = max(((value / floor, profile) for value, floor, profile in options if value), key=lambda r: r[0], default=None)
     return best[1] if best else None
+
+
+# --- v35.1 Mixed feelings: which part brings which feeling (the cause split) ----------------------------------------
+PART_DIFFERENCE = .008  # how much more one part raises a feeling than the other part does, to call it that part's feeling
+
+
+def part_feelings(mixed, proposals, names, usual=None):
+    """[(part, feeling word)] for the good and the hard part of mixed news: the feeling each part raises most compared
+    with the other part, if it is at least at its usual level (closeness and engagement left out, as for subjects).
+    Compared with each other, not with the usual levels: "i'm kind of terrified" raised fear only a little above usual on
+    this engine, but clearly more than "i'm the new shift lead" did (v35.1 targeted run)."""
+    usual = usual or USUAL
+    first, second = (dict(zip(names, p)) for p in proposals[:2])
+    rows = []
+    for part, this, other in ((mixed['good'], first, second), (mixed['hard'], second, first)):
+        ahead = sorted(((this[n] - other[n], n) for n in names if n not in ENGAGEMENT and n != 'connection'
+                        and this[n] >= usual.get(n, USUAL.get(n, 0.))), reverse=True)
+        if ahead and ahead[0][0] >= PART_DIFFERENCE:
+            rows.append((part, WORDS.get(ahead[0][1], ahead[0][1])))
+    return rows
+
+
+def causes(mixed, proposals, names):
+    """{feeling: the part that raised it more}, for update_topic_feelings."""
+    good, hard = (dict(zip(names, p)) for p in proposals[:2])
+    return {n: mixed['good'] if good[n] >= hard[n] else mixed['hard'] for n in names}
+
+
+# --- v35.1 Feelings about feelings -----------------------------------------------------------------------------------
+# After a short or guarded reply, Friday is a little uneasy about it, the way a person is after snapping. It shows in what
+# it does (warmer, no big apology), and it says so only when asked (the user's choice, 2026-11-04).
+SHORT_MOODS = {'irritated': 'being short with them', 'hurt': 'being guarded with them'}
+# The unease itself is appraised as an event since v35.2 (experience_loop.feelings_about_feelings), not added to the state.
+META_WINDOW = 3600
+ASKS_ABOUT_YOU = re.compile(r"(?i)\b(?:are you (?:ok|okay|alright|all right|good|mad|upset|hurt|annoyed|angry)|you (?:ok|okay|good|alright)\s*\?|"
+                            r"did (?:that|i|it|what i said) (?:upset|hurt|bother|offend|annoy|sting) you|how are you(?: doing| feeling)?|"
+                            # v35.1 live chat: "would that bother you if i switched?" got a flat "It wouldn't bother me at all".
+                            r"(?:would|will|does|is) (?:that|it|this) (?:going to )?(?:upset|hurt|bother|offend|annoy|sting) you|"
+                            r"would you (?:be|feel) (?:sad|hurt|upset|bothered|lonely)|would you (?:mind|care|miss me)|do you (?:mind|care)\b|"
+                            r"how (?:do|did) you feel|you seemed (?:short|off|upset|annoyed|cold|hurt|distant)|why were you so|"
+                            r"sorry (?:for|about) (?:snapping|being (?:rude|mean|harsh|a jerk)|yelling|that|what i said)|i didn'?t mean (?:that|it))")
+
+
+def uneasy_after(last, text, now):
+    """{'mood', 'about'} when Friday's last reply was short or guarded, within the hour, and this message isn't another
+    jab (being uneasy about snapping at someone who is still insulting you is not how it works)."""
+    if not last or last.get('mood') not in SHORT_MOODS or AT_FRIDAY.search(text or ''):
+        return None
+    try:
+        when = time_sense.parse(last['utc'])
+    except (KeyError, TypeError, ValueError):
+        return None
+    if now - when > META_WINDOW:
+        return None
+    return {'mood': last['mood'], 'about': SHORT_MOODS[last['mood']]}
+
+
+# "How does that land for you?" one turn after mixed news (v35.1 targeted run: the split was in the note on the news
+# turn, and gone by the question).
+ASKS_HOW_IT_FEELS = re.compile(r"(?i)\b(?:how (?:does|did) (?:that|it|this|all that) (?:land|feel|sit)(?: (?:for|with|to) you)?|"
+                               r"what(?:'s| is| was) (?:that|it|this) like for you|how do you feel about (?:it|that|this|all)|"
+                               r"what do you make of (?:that|it|this)|how does (?:it|that) feel to you|how do you feel hearing)")
+
+
+def meta_line(meta, asked):
+    line = (f'you feel a little uneasy about {meta["about"]} in your last reply. Let it show in what you do: be a bit warmer '
+            'and more open this time, with no big apology and no explaining yourself')
+    if asked:
+        line += '. They are asking how you are, so you can say it plainly and briefly (that you were a bit short, and you don\'t love that)'
+    else:
+        line += '. Don\'t mention it unless they ask'
+    return line
+
+
+# --- v35.1 Downplaying, gently, with timing ------------------------------------------------------------------------
+# The user's choice (2026-11-04): Friday may downplay a feeling the way people do, "but softer and not as harsh", with
+# the focus on timing. While their need comes first, a mild sting is kept small ("I'm okay, just a little stung") or out
+# of the reply; later, when things are calm, it can say it honestly. A strong feeling is never brushed off, and a flat
+# "I'm fine" is caught either way.
+OWN_WORDS = {'pain': 'stung', 'shame': 'stung', 'anger': 'irritated', 'vulnerability': 'exposed'}  # "a little a bit exposed" in the live chat
+OWN_FLOOR, OWN_STRONG = .02, .10   # above its usual level: a feeling worth noticing, and one too strong to downplay
+HOLD_EXPIRES = 3 * 86400
+
+
+def own_feeling(state, usual=None):
+    """Friday's own hard feeling right now (hurt, irritation): {'name', 'word', 'above', 'strong'} or None."""
+    usual = usual or USUAL
+    above = sorted(((state.get(n, 0.) - usual.get(n, USUAL[n]), n) for n in OWN_WORDS), reverse=True)
+    amount, name = above[0]
+    if amount < OWN_FLOOR:
+        return None
+    return {'name': name, 'word': OWN_WORDS[name], 'above': round(amount, 4), 'strong': amount >= OWN_STRONG}
+
+
+def downplay_line(own, asked):
+    if asked:
+        return (f'you are a little {own["word"]}, but what they are going through comes first right now. If you answer about '
+                f'yourself, keep it soft and small and true ("I\'m okay, just a little {own["word"]}"), then turn back to them. '
+                'Not a flat "I\'m fine" or "not at all"')
+    return (f'you are a little {own["word"]}, but what they are going through comes first right now: keep your own feeling '
+            'out of this reply')
+
+
+def honest_later_line(held):
+    return (f'earlier you kept it small that you were {held["word"]} (when they said "{held["when_they_said"][:100]}"), because '
+            'they needed the attention then. Things are calmer now. If it fits naturally (they ask how you are, or that '
+            'moment comes up), you can say it honestly and lightly, once, without blaming them')
+
+
+def honest_later_due(held, now, exchanges_since, asked, calm):
+    """Time to be honest about a feeling kept small earlier: things are calm, and they ask, or a little time has passed."""
+    if not held or not calm:
+        return False
+    try:
+        when = time_sense.parse(held['utc'])
+    except (KeyError, TypeError, ValueError):
+        return False
+    if now - when > HOLD_EXPIRES:
+        return False
+    if held.get('offered'):
+        return bool(asked)  # offered once already (v35.1 live chat: it rode along on nearly every turn); again only if they ask
+    return bool(asked or exchanges_since >= 3)
+
+
+FLAT_DENIAL = re.compile(r"(?i)(?:^\W*(?:no,?\s+)?i'?m (?:totally |completely |perfectly )?(?:fine|good|ok(?:ay)?|alright)\b(?!,? just| but)|"
+                         r"\bnot at all\b|\b(?:it|that) (?:didn'?t|wouldn'?t|won'?t|doesn'?t) (?:bother|hurt|upset|sting) me\b|\bi wasn'?t (?:upset|hurt|bothered|annoyed)\b|"
+                         r"\bi wouldn'?t (?:mind|care|be (?:sad|hurt|upset|bothered))\b)")
+# "No hard feelings" after an apology is forgiving them, not denying the feeling, so it isn't here.
+SOFT_OWN = re.compile(r"(?i)\b(?:a little|a bit|a tiny bit|kind of|kinda|slightly|just a)\b")
+
+
+def flat_denial(reply):
+    """A flat "I'm fine" about a feeling Friday has, with nothing soft and true in it."""
+    return bool(FLAT_DENIAL.search(reply or '') and not SOFT_OWN.search(reply or ''))

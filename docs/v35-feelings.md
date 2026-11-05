@@ -227,9 +227,9 @@ A second replay after those fixes:
 | "eli called on my lunch break" | "Nice! Did he tell you anything new about the gym?" (a bare "Nice!" is now caught too) |
 
 Still open:
-- **Mixed news doesn't build a subject feeling.** "Trying to be happy for him but it kinda sucks" reads as faintly sad, so the subject doesn't come back with a history. This is v35.1's mixed feelings.
+- ~~**Mixed news doesn't build a subject feeling.**~~ Fixed in v35.1: the parts of mixed news are appraised separately, and Eli's sadness reaches 0.11 ([`v35.1-mixed-feelings.md`](v35.1-mixed-feelings.md)).
 - **Days are sometimes wrong.** The puppy was two days earlier, not "last Friday".
 - **The "you'll win" check misfires** on "I can't promise you'll win" (the check, not the reply).
 
 ## Next: v35.1
-Mixed feelings (two at once, about different parts of the same news) and feelings about feelings (being uneasy about being irritated, for example).
+Mixed feelings and feelings about feelings came next: see [`v35.1-mixed-feelings.md`](v35.1-mixed-feelings.md).
