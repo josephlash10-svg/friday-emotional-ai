@@ -159,6 +159,13 @@ CATEGORIES = {
   'my dad compared me to my sister again', 'my manager scheduled me on my day off', 'people at work keep interrupting me',
   'my best friend forgot my birthday', 'my neighbor plays music at 3am', 'my partner left dishes in the sink for a week',
   'my coach benched me for nothing', 'my in-laws are driving me crazy', 'someone keyed my car', 'my professor ignored my email',
+  # v35.2: short wrongs done to them. With the MiniLM vector scaled up, a betrayal said in a few words could read as good
+  # news ("She cheated on me" at progress +0.09); the polarity gate in train_meaning_appraisal.py checks this.
+  'found out my husband has been texting his ex behind my back', 'my business partner lied about the numbers',
+  'my friend sold my bike without telling me', 'my sister went through my texts', 'the mechanic overcharged me by 300 bucks',
+  'my roommate moved out and left me with the rent', 'my ex is telling lies about me to everyone',
+  'my teammate threw me under the bus in the meeting', 'my boyfriend was talking to other girls the whole time',
+  'a stranger took my package off the porch',
  ]),
  'goodbye': (T((.35,.1,.85,.7,.1,.05,.45,.05,0)), [
   'ok i gotta go', 'bye for now', 'talk later!', 'heading to bed, night', 'gtg dinner', 'see ya', 'thanks, bye', 'i\'ll be back tomorrow',
@@ -230,6 +237,10 @@ CATEGORIES = {
   'my kid left for college and i sat in her room for an hour', 'i know it\'s good for him but i\'m going to miss him like crazy',
   'lol i\'m fine i\'m fine. i\'m not fine. my best friend is leaving', 'we used to talk every day and now it\'s like once a month',
   'kind of a sad night, ate dinner alone for the first time in years', 'my old dog is slowing down and it makes me so sad',
+  # v35.2: short rejections and losses, which the scaled-up MiniLM vector can confuse with their opposites.
+  'didn\'t get into the program', 'the apartment went to someone else', 'they picked the other candidate',
+  'my girlfriend broke up with me last night', 'got turned down for the loan', 'my scholarship got denied',
+  'i bombed the interview', 'they took back the offer', 'didn\'t make the team', 'got laid off today',
  ]),
  # v35.2 (Moss live chat): angry blame for something Friday's advice caused read as warm and good ("i did what you said...
  # this is on you. i trusted you" -> progress +0.32, joy). A loss Friday caused: agency toward Friday, so guilt and sadness.
@@ -341,6 +352,19 @@ def rows():
 
 def holdout():
     return [{'text': text, 'category': name, 'target': list(CATEGORIES[name][0])} for name, text in HOLDOUT]
+
+# v35.2 polarity gate: short news, never trained on. Bad news (sign -1) must read below -0.05 progress, good news (+1)
+# above +0.05. Found after the v35.2 regression: "She cheated on me. She deserves it." read as a mix of relief and sadness.
+SHORT_NEWS = [(t, -1) for t in (
+    'She cheated on me', 'He lied to me', 'my friend stole from me', 'he left me for someone else', 'my roommate read my diary',
+    'they fired me', 'my landlord kicked me out', 'she ghosted me', 'my brother took my car without asking',
+    'he broke up with me over text', 'my coworker presented my slides as hers', 'they cancelled my flight',
+    'somebody smashed my car window', 'my dad forgot my birthday', 'i got dumped', 'my best friend told everyone my secret',
+    'my wife wants a divorce', 'i failed the test', 'my dog died', 'the surgery didn\'t work', 'i lost my wallet',
+    'my phone got stolen', 'we lost the game', 'i didn\'t get the job', 'my mom yelled at me', 'nobody came to my party',
+    'my car broke down', 'they rejected my application')] + [(t, 1) for t in (
+    'i got the job', 'we won the game', 'she said yes', 'my test came back clear', 'they accepted my application',
+    'i passed the test', 'my dog is home from the vet and doing great', 'he finally apologized')]
 
 if __name__ == '__main__':
     r = rows()

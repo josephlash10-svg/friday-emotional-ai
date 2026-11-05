@@ -25,7 +25,7 @@ from model import ROOT, EMOTIONS, load_checkpoint
 from train_conversational_appraisal import to_unit, as_event
 from train_mature_appraisal import examples as formal_examples, HOLDOUT as FORMAL_HOLDOUT
 from train_extended_appraisal import rows as extended_rows, HELDOUT as EXTENDED_HELDOUT
-from conversational_appraisal_data import rows as natural_rows, holdout as natural_holdout
+from conversational_appraisal_data import rows as natural_rows, holdout as natural_holdout, SHORT_NEWS
 from semantic_interpreter import meaning_head_modules, combined_features, attach_meaning_heads, HEADS_FILE, COMBINE_MODES
 import meaning_recall
 
@@ -76,6 +76,7 @@ def main():
 
     start = time.perf_counter()
     every = texts + [r['text'] for r in natural_val] + [r['text'] for r in formal_val] + [r['text'] for r in extended_val]
+    if set(t for t, _ in SHORT_NEWS) & set(texts): raise RuntimeError('A polarity-gate text is in the training table')
     # Optional encoding cache for repeated runs (the encoders are frozen, so a text's features never change).
     cache_path = os.environ.get('MEANING_FEATURE_CACHE')
     cache = torch.load(cache_path) if cache_path and os.path.exists(cache_path) else {}
@@ -87,6 +88,20 @@ def main():
             if i % 200 == 0: print('Encoded', i, 'of', len(missing), flush=True)
     if cache_path and missing: torch.save(cache, cache_path)
     lm = torch.stack([cache[t][0] for t in every]); minilm = torch.stack([cache[t][1] for t in every])
+    news_texts = [t for t, _ in SHORT_NEWS]
+    with torch.no_grad():
+        for t in news_texts:
+            if t not in cache: cache[t] = (agent.decoder.meaning_features(t), embedder.embed([t])[0])
+    news_lm = torch.stack([cache[t][0] for t in news_texts]); news_minilm = torch.stack([cache[t][1] for t in news_texts])
+    news_sign = torch.tensor([s for _, s in SHORT_NEWS], dtype=torch.float32)
+
+    def polarity_errors(core_head, mode):
+        # Short news read the wrong way round (or as neutral): bad news must read below -0.05, good news above +0.05.
+        x = torch.stack([combined_features(news_lm[i], news_minilm[i], mode) for i in range(len(news_texts))])
+        with torch.no_grad():
+            progress = 2 * core_head(x).sigmoid()[:, 1] - 1
+        wrong = (progress * news_sign) <= .05
+        return int(wrong.sum()), [news_texts[i] for i in wrong.nonzero().flatten().tolist()]
     n, a, b = len(texts), len(natural_val), len(formal_val)
     def split(feats): return feats[:n], feats[n:n + a], feats[n + a:n + a + b], feats[n + a + b:]
     def combine(mode): return torch.stack([combined_features(lm[i], minilm[i], mode) for i in range(len(every))])
@@ -146,6 +161,8 @@ def main():
     _, snx, sfx, sex = split(combine(shipped_mode))
     shipped = evaluate(shipped_core, shipped_ext, snx, sfx, sex)
     shipped_emotions = category_emotions(shipped_core, shipped_ext, snx)
+    shipped['short_news_misread'], shipped_misread = polarity_errors(shipped_core, shipped_mode)
+    print('shipped heads misread', shipped['short_news_misread'], 'short news:', shipped_misread, flush=True)
 
     variants = {}
     for mode in COMBINE_MODES:
@@ -154,7 +171,10 @@ def main():
         core_head, extended_head = train_heads(x, table, texts)
         after = evaluate(core_head, extended_head, nx, fx, ex)
         emotions = category_emotions(core_head, extended_head, nx)
+        after['short_news_misread'], misread = polarity_errors(core_head, mode)
+        print('   misread short news:', after['short_news_misread'], misread, flush=True)
         gates = {
+            'short_news_polarity_not_worse': after['short_news_misread'] <= shipped['short_news_misread'],
             'natural_holdout_not_worse_than_shipped': after['natural_core_mse'] <= shipped['natural_core_mse'] + .0005,
             'earlier_natural_categories_not_worse': after['natural_before_v35_2_core_mse'] <= shipped['natural_before_v35_2_core_mse'] + .001,
             'casual_sadness_not_worse': after['casual_sadness_core_mse'] <= shipped['casual_sadness_core_mse'] + .002,
