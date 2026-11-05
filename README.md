@@ -1,4 +1,4 @@
-# Emotional Project — Friday (V14, build v35.1.2)
+# Emotional Project — Friday (V14, build v35.2)
 
 [![Tests](https://github.com/josephlash10-svg/friday-emotional-ai/actions/workflows/tests.yml/badge.svg)](https://github.com/josephlash10-svg/friday-emotional-ai/actions/workflows/tests.yml)
 
@@ -113,6 +113,17 @@ mood; long-term memory is kept) · `:quit`
 ```
 
 ## Status
+
+v35.2 goes back to the math. After an outside audit, two shortcuts that wrote into Friday's feelings directly now go through the
+appraisal:
+- a subject with a history sets Friday's expectation for that subject;
+- being short with someone is appraised as a small event of its own.
+
+[`docs/MATH.md`](docs/MATH.md) was corrected where it was wrong. Two more changes were tried and held back, with the numbers:
+- retrained appraisal heads, which read blame better but short bad news worse;
+- a recalibrated reflex, which turned out never to have been taught distress.
+
+See [`docs/v35.2-back-to-the-math.md`](docs/v35.2-back-to-the-math.md).
 
 v35.1 adds mixed feelings, which part of the news brings which feeling, unease after being short, and gentle downplaying with timing.
 A live chat with a made-up AI (Moss, which runs an orchard's frost fans and hives) found a stall, a context window so crowded that
